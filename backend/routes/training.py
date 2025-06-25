@@ -8,13 +8,20 @@ def get_db():
     """Get database instance from current app"""
     return current_app.extensions['sqlalchemy']
 
+def get_current_user_id():
+    """Get current user ID from JWT token and convert from string to int"""
+    from flask_jwt_extended import get_jwt_identity
+    current_user_id_str = get_jwt_identity()  # This is now a string
+    current_user_id = int(current_user_id_str)  # Convert to int for database queries
+    return current_user_id
+
 # Training Sessions Routes
 @training_bp.route('/sessions', methods=['GET'])
 @jwt_required()
 def get_training_sessions():
     """Get all training sessions for the current user"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = get_current_user_id()  # Use helper function
         print(f"🔍 Getting sessions for user ID: {current_user_id}")
         
         TrainingSession = current_app.TrainingSession
@@ -73,7 +80,7 @@ def get_training_sessions():
 def create_training_session():
     """Create a new training session"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = get_current_user_id()  # Use helper function
         data = request.get_json()
         
         TrainingSession = current_app.TrainingSession
@@ -152,7 +159,7 @@ def create_training_session():
 def get_training_session(session_id):
     """Get a specific training session"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = get_current_user_id()
         TrainingSession = current_app.TrainingSession
         
         session = TrainingSession.query.filter_by(
@@ -177,7 +184,7 @@ def get_training_session(session_id):
 def update_training_session(session_id):
     """Update a training session"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = get_current_user_id()
         TrainingSession = current_app.TrainingSession
         db = get_db()
         
@@ -249,7 +256,7 @@ def update_training_session(session_id):
 def delete_training_session(session_id):
     """Delete a training session"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = get_current_user_id()
         TrainingSession = current_app.TrainingSession
         db = get_db()
         
@@ -278,7 +285,7 @@ def delete_training_session(session_id):
 def get_technique_progress():
     """Get technique progress for the current user"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = get_current_user_id()
         TechniqueProgress = current_app.TechniqueProgress
         
         style = request.args.get('style')
@@ -309,7 +316,7 @@ def get_technique_progress():
 def create_technique_progress():
     """Create or update technique progress"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = get_current_user_id()
         data = request.get_json()
         
         TechniqueProgress = current_app.TechniqueProgress
@@ -368,7 +375,7 @@ def create_technique_progress():
 def update_technique_progress(technique_id):
     """Update technique progress"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = get_current_user_id()
         TechniqueProgress = current_app.TechniqueProgress
         db = get_db()
         
@@ -417,7 +424,7 @@ def update_technique_progress(technique_id):
 def delete_technique_progress(technique_id):
     """Delete technique progress"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = get_current_user_id()
         TechniqueProgress = current_app.TechniqueProgress
         db = get_db()
         
@@ -446,7 +453,7 @@ def delete_technique_progress(technique_id):
 def get_training_stats():
     """Get training statistics for the current user"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = get_current_user_id()  # Use helper function
         print(f"🔍 Getting stats for user ID: {current_user_id}")
         
         TrainingSession = current_app.TrainingSession
@@ -540,7 +547,7 @@ def get_training_stats():
 def get_user_styles():
     """Get all martial arts styles the user has trained in"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = get_current_user_id()
         TrainingSession = current_app.TrainingSession
         TechniqueProgress = current_app.TechniqueProgress
         db = get_db()
@@ -595,7 +602,7 @@ def test_training():
 def test_training_auth():
     """Test endpoint for JWT authentication"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = get_current_user_id()
         print(f"🔐 Auth test - User ID: {current_user_id}")
         return jsonify({
             'message': 'Training authentication is working',

@@ -1,6 +1,6 @@
 import os
 import sys
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request  # Added request import
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
@@ -35,55 +35,54 @@ def create_app():
     db.init_app(app)
     jwt.init_app(app)
 
-    # Add request logging middleware for debugging
+    # Debug middleware to inspect JWT tokens
     @app.before_request
-    def log_request_info():
-        if request.path.startswith('/api/'):
-            print(f"\n🔍 Request Debug:")
-            print(f"   Path: {request.path}")
-            print(f"   Method: {request.method}")
-            print(f"   Headers: {dict(request.headers)}")
+    def debug_jwt_token():
+        """Debug JWT token in requests"""
+        if request.endpoint and 'training' in str(request.endpoint):
+            print(f"\n🔍 JWT Debug for {request.method} {request.path}")
+            print(f"Endpoint: {request.endpoint}")
             
-            # Check for Authorization header specifically
             auth_header = request.headers.get('Authorization')
             if auth_header:
-                print(f"   🔑 Authorization header found: {auth_header[:50]}...")
+                print(f"✅ Authorization header found: {auth_header[:50]}...")
                 if auth_header.startswith('Bearer '):
-                    print(f"   ✅ Proper Bearer format detected")
+                    token = auth_header[7:]  # Remove 'Bearer ' prefix
+                    print(f"🔑 Token (first 30 chars): {token[:30]}...")
+                    
+                    # Try to decode the token to see if it's valid
+                    try:
+                        from flask_jwt_extended import decode_token
+                        decoded = decode_token(token)
+                        print(f"✅ Token decoded successfully: user_id = {decoded['sub']}")
+                    except Exception as e:
+                        print(f"❌ Token decode error: {str(e)}")
                 else:
-                    print(f"   ❌ Missing 'Bearer ' prefix")
+                    print("❌ Authorization header doesn't start with 'Bearer '")
             else:
-                print(f"   ❌ No Authorization header found")
-
-    # Add response logging for JWT errors
-    @app.after_request
-    def log_response_info(response):
-        if request.path.startswith('/api/') and response.status_code == 401:
-            print(f"   🚨 401 Unauthorized response for {request.path}")
-            try:
-                response_data = response.get_json()
-                if response_data:
-                    print(f"   Error message: {response_data.get('message', 'No message')}")
-            except:
-                pass
-        return response
+                print("❌ No Authorization header found")
+            print("---")
 
     # JWT error handlers
     @jwt.expired_token_loader
     def expired_token_callback(jwt_header, jwt_payload):
+        print("❌ JWT: Token has expired")
         return jsonify({'message': 'Token has expired'}), 401
 
     @jwt.invalid_token_loader
     def invalid_token_callback(error):
+        print(f"❌ JWT: Invalid token - {error}")
         return jsonify({'message': 'Invalid token'}), 401
 
     @jwt.unauthorized_loader
     def missing_token_callback(error):
+        print(f"❌ JWT: Missing token - {error}")
         return jsonify({'message': 'Authorization token is required'}), 401
 
     # Add token verification error handler
     @jwt.revoked_token_loader
     def revoked_token_callback(jwt_header, jwt_payload):
+        print("❌ JWT: Token has been revoked")
         return jsonify({'message': 'Token has been revoked'}), 401
 
     # CORS setup with more permissive settings for development
@@ -146,33 +145,6 @@ def create_app():
             'jwt_header_type': app.config.get('JWT_HEADER_TYPE'),
             'jwt_algorithm': app.config.get('JWT_ALGORITHM')
         })
-    
-    @app.before_request
-    def debug_jwt_token():
-        """Debug JWT token in requests"""
-        if request.endpoint and 'training' in request.endpoint:
-            print(f"\n🔍 JWT Debug for {request.method} {request.path}")
-            print(f"Headers: {dict(request.headers)}")
-            
-            auth_header = request.headers.get('Authorization')
-            if auth_header:
-                print(f"Authorization header: {auth_header[:50]}...")
-                if auth_header.startswith('Bearer '):
-                    token = auth_header[7:]  # Remove 'Bearer ' prefix
-                    print(f"Token (first 30 chars): {token[:30]}...")
-                    
-                    # Try to decode the token to see if it's valid
-                    try:
-                        from flask_jwt_extended import decode_token
-                        decoded = decode_token(token)
-                        print(f"Token decoded successfully: user_id = {decoded['sub']}")
-                    except Exception as e:
-                        print(f"Token decode error: {str(e)}")
-                else:
-                    print("❌ Authorization header doesn't start with 'Bearer '")
-            else:
-                print("❌ No Authorization header found")
-            print("---")
 
     return app
 

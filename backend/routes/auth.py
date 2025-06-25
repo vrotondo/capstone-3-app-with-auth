@@ -72,11 +72,11 @@ def register():
         )
         
         user.save()
-        print(f"User created successfully: {user.email}")
+        print(f"User created successfully: {user.email} with ID: {user.id}")
         
-        # Create tokens
-        access_token = create_access_token(identity=user.id)
-        refresh_token = create_refresh_token(identity=user.id)
+        # Create tokens - CONVERT USER ID TO STRING
+        access_token = create_access_token(identity=str(user.id))  # Convert to string!
+        refresh_token = create_refresh_token(identity=str(user.id))  # Convert to string!
         
         print(f"Tokens created successfully - Access token: {access_token[:20]}...")
         
@@ -122,11 +122,13 @@ def login():
             print(f"Invalid password for user: {data['email']}")
             return jsonify({'message': 'Invalid email or password'}), 401
         
-        print(f"Login successful for user: {user.email}")
+        print(f"Login successful for user: {user.email} with ID: {user.id}")
         
-        # Create tokens
-        access_token = create_access_token(identity=user.id)
-        refresh_token = create_refresh_token(identity=user.id)
+        # Create tokens - CONVERT USER ID TO STRING
+        access_token = create_access_token(identity=str(user.id))  # Convert to string!
+        refresh_token = create_refresh_token(identity=str(user.id))  # Convert to string!
+        
+        print(f"Tokens created with string identity: {str(user.id)}")
         
         # Return user data with consistent field names for frontend
         user_data = user.to_dict()
@@ -148,15 +150,19 @@ def login():
 def refresh():
     """Refresh access token"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = get_jwt_identity()  # This will now be a string
+        print(f"Refreshing token for user ID: {current_user_id}")
+        
         User = current_app.User
         
-        user = User.query.get(current_user_id)
+        # Convert string back to int for database query
+        user = User.query.get(int(current_user_id))
         
         if not user:
             return jsonify({'message': 'User not found'}), 404
         
-        new_token = create_access_token(identity=current_user_id)
+        # Create new token with string identity
+        new_token = create_access_token(identity=current_user_id)  # Keep as string
         
         # Return user data with consistent field names
         user_data = user.to_dict()
@@ -175,10 +181,13 @@ def refresh():
 def get_current_user():
     """Get current user information"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = get_jwt_identity()  # This will now be a string
+        print(f"Getting current user with ID: {current_user_id}")
+        
         User = current_app.User
         
-        user = User.query.get(current_user_id)
+        # Convert string back to int for database query
+        user = User.query.get(int(current_user_id))
         
         if not user:
             return jsonify({'message': 'User not found'}), 404
@@ -192,6 +201,7 @@ def get_current_user():
         
     except Exception as e:
         current_app.logger.error(f"Get current user error: {str(e)}")
+        print(f"Get current user error: {str(e)}")
         return jsonify({'message': 'Failed to get user information'}), 500
 
 @auth_bp.route('/me', methods=['PUT'])
@@ -199,11 +209,12 @@ def get_current_user():
 def update_current_user():
     """Update current user information"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = get_jwt_identity()  # This will now be a string
         User = current_app.User
         db = get_db()
         
-        user = User.query.get(current_user_id)
+        # Convert string back to int for database query
+        user = User.query.get(int(current_user_id))
         
         if not user:
             return jsonify({'message': 'User not found'}), 404
@@ -278,11 +289,14 @@ def test_auth():
 def test_jwt():
     """Test endpoint for JWT authentication"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = get_jwt_identity()  # This will now be a string
+        print(f"JWT test successful for user ID: {current_user_id}")
         return jsonify({
             'message': 'JWT authentication is working',
             'user_id': current_user_id,
+            'user_id_type': type(current_user_id).__name__,
             'timestamp': str(datetime.utcnow())
         }), 200
     except Exception as e:
+        print(f"JWT test error: {str(e)}")
         return jsonify({'message': f'JWT test failed: {str(e)}'}), 500
