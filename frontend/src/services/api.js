@@ -1,25 +1,20 @@
-// frontend/src/services/api.js - Alternative port configuration
 import axios from 'axios';
 
-// Try different ports if 5000 doesn't work
-const POSSIBLE_PORTS = [5000, 8000, 5001, 3001];
-const BASE_URL = `http://localhost:${POSSIBLE_PORTS[0]}/api`;
-
-// Create axios instance with base configuration
+// Use port 8000 to avoid Windows port 5000 conflicts
 const api = axios.create({
-    baseURL: BASE_URL,
+    baseURL: 'http://localhost:8000/api',
     headers: {
         'Content-Type': 'application/json',
     },
-    timeout: 5000,  // 5 second timeout
+    timeout: 10000,
 });
 
-// Request interceptor to add auth token and log requests
+// Request interceptor
 api.interceptors.request.use(
     (config) => {
-        console.log(`Making ${config.method?.toUpperCase()} request to: ${config.url}`);
-        console.log('Full URL:', `${config.baseURL}${config.url}`);
-        console.log('Request data:', config.data);
+        console.log(`🔄 Making ${config.method?.toUpperCase()} request to: ${config.url}`);
+        console.log('📍 Full URL:', `${config.baseURL}${config.url}`);
+        console.log('📦 Request data:', config.data);
 
         const token = localStorage.getItem('token');
         if (token) {
@@ -28,41 +23,31 @@ api.interceptors.request.use(
         return config;
     },
     (error) => {
-        console.error('Request error:', error);
+        console.error('❌ Request error:', error);
         return Promise.reject(error);
     }
 );
 
-// Response interceptor to handle errors and log responses
+// Response interceptor
 api.interceptors.response.use(
     (response) => {
-        console.log(`Response from ${response.config.url}:`, response.data);
+        console.log(`✅ Response from ${response.config.url}:`, response.data);
         return response;
     },
     (error) => {
-        console.error('Response error:', error);
-        console.error('Error details:', {
-            status: error.response?.status,
-            statusText: error.response?.statusText,
-            data: error.response?.data,
-            url: error.config?.url,
-            method: error.config?.method,
-            baseURL: error.config?.baseURL
-        });
+        console.error('❌ Response error:', error);
 
-        // Specific handling for connection errors
         if (error.code === 'ECONNREFUSED' || error.message === 'Network Error') {
-            console.error('🚨 Backend server is not running or not accessible');
-            console.error('👉 Make sure your Flask server is running on the correct port');
+            console.error('🚨 BACKEND NOT RUNNING!');
+            console.error('💡 Start backend with: python app.py');
         }
 
         if (error.response?.status === 401) {
-            // Token expired or invalid
-            console.log('Unauthorized - clearing auth data');
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             window.location.href = '/login';
         }
+
         return Promise.reject(error);
     }
 );
