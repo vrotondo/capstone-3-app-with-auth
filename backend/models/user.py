@@ -13,8 +13,9 @@ class User(db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     first_name = db.Column(db.String(50), nullable=False)
     last_name = db.Column(db.String(50), nullable=False)
-    primary_style = db.Column(db.String(50), nullable=True)
-    belt_rank = db.Column(db.String(30), nullable=True)
+    primary_style = db.Column(db.String(50), nullable=True)  # This will map to 'martial_art' in frontend
+    belt_rank = db.Column(db.String(30), nullable=True)      # This will map to 'current_belt' in frontend
+    dojo = db.Column(db.String(100), nullable=True)          # Add dojo field
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -22,13 +23,14 @@ class User(db.Model):
     training_sessions = db.relationship('TrainingSession', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     technique_progress = db.relationship('TechniqueProgress', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     
-    def __init__(self, email, password, first_name, last_name, primary_style=None, belt_rank=None):
+    def __init__(self, email, password, first_name, last_name, primary_style=None, belt_rank=None, dojo=None):
         self.email = email.lower().strip()
         self.password_hash = generate_password_hash(password)
         self.first_name = first_name.strip()
         self.last_name = last_name.strip()
         self.primary_style = primary_style
         self.belt_rank = belt_rank
+        self.dojo = dojo
     
     def check_password(self, password):
         """Check if provided password matches hash"""
@@ -48,6 +50,7 @@ class User(db.Model):
             'last_name': self.last_name,
             'primary_style': self.primary_style,
             'belt_rank': self.belt_rank,
+            'dojo': self.dojo,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
@@ -65,13 +68,23 @@ class User(db.Model):
     
     def save(self):
         """Save user to database"""
-        db.session.add(self)
-        db.session.commit()
+        try:
+            db.session.add(self)
+            db.session.commit()
+            return True
+        except Exception as e:
+            db.session.rollback()
+            raise e
     
     def delete(self):
         """Delete user from database"""
-        db.session.delete(self)
-        db.session.commit()
+        try:
+            db.session.delete(self)
+            db.session.commit()
+            return True
+        except Exception as e:
+            db.session.rollback()
+            raise e
     
     def __repr__(self):
         return f'<User {self.email}>'

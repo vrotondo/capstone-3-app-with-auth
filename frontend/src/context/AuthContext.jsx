@@ -54,14 +54,25 @@ export const AuthProvider = ({ children }) => {
         const token = localStorage.getItem('token');
         const user = localStorage.getItem('user');
 
+        console.log('AuthContext initialization - token:', !!token, 'user:', !!user);
+
         if (token && user) {
-            dispatch({
-                type: 'LOGIN_SUCCESS',
-                payload: {
-                    token,
-                    user: JSON.parse(user),
-                },
-            });
+            try {
+                const parsedUser = JSON.parse(user);
+                console.log('Restored user from localStorage:', parsedUser);
+                dispatch({
+                    type: 'LOGIN_SUCCESS',
+                    payload: {
+                        token,
+                        user: parsedUser,
+                    },
+                });
+            } catch (error) {
+                console.error('Error parsing stored user data:', error);
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                dispatch({ type: 'SET_LOADING', payload: false });
+            }
         } else {
             dispatch({ type: 'SET_LOADING', payload: false });
         }
@@ -69,51 +80,88 @@ export const AuthProvider = ({ children }) => {
 
     const login = async (email, password) => {
         try {
+            console.log('AuthContext: Starting login process for:', email);
             dispatch({ type: 'SET_LOADING', payload: true });
-            const response = await authService.login(email, password);
 
+            const response = await authService.login(email, password);
+            console.log('AuthContext: Login response received:', response);
+
+            // Store the token and user data
             localStorage.setItem('token', response.token);
             localStorage.setItem('user', JSON.stringify(response.user));
 
             dispatch({
                 type: 'LOGIN_SUCCESS',
-                payload: response,
+                payload: {
+                    token: response.token,
+                    user: response.user
+                },
             });
 
+            console.log('AuthContext: Login successful, user authenticated');
             return { success: true };
         } catch (error) {
+            console.error('AuthContext: Login failed:', error);
             dispatch({ type: 'AUTH_ERROR' });
+
+            // Extract error message
+            let errorMessage = 'Login failed';
+            if (error.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+
             return {
                 success: false,
-                error: error.response?.data?.message || 'Login failed'
+                error: errorMessage
             };
         }
     };
 
     const register = async (userData) => {
         try {
+            console.log('AuthContext: Starting registration process');
             dispatch({ type: 'SET_LOADING', payload: true });
-            const response = await authService.register(userData);
 
+            const response = await authService.register(userData);
+            console.log('AuthContext: Registration response received:', response);
+
+            // Store the token and user data
             localStorage.setItem('token', response.token);
             localStorage.setItem('user', JSON.stringify(response.user));
 
             dispatch({
                 type: 'LOGIN_SUCCESS',
-                payload: response,
+                payload: {
+                    token: response.token,
+                    user: response.user
+                },
             });
 
+            console.log('AuthContext: Registration successful, user authenticated');
             return { success: true };
         } catch (error) {
+            console.error('AuthContext: Registration failed:', error);
             dispatch({ type: 'AUTH_ERROR' });
+
+            // Extract error message
+            let errorMessage = 'Registration failed';
+            if (error.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+
             return {
                 success: false,
-                error: error.response?.data?.message || 'Registration failed'
+                error: errorMessage
             };
         }
     };
 
     const logout = () => {
+        console.log('AuthContext: Logging out user');
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         dispatch({ type: 'LOGOUT' });

@@ -1,6 +1,4 @@
 from flask import Blueprint, request, jsonify, current_app
-from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt
-from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
 from email_validator import validate_email, EmailNotValidError
 from datetime import datetime
@@ -13,6 +11,7 @@ def register():
     """Register a new user"""
     try:
         data = request.get_json()
+        print(f"Registration attempt with data: {data}")
         
         # Validate required fields
         required_fields = ['email', 'password', 'first_name', 'last_name']
@@ -36,38 +35,47 @@ def register():
         if len(password) < 6:
             return jsonify({'message': 'Password must be at least 6 characters long'}), 400
         
-        # Create new user
+        # Create new user with correct field mapping
         user = User(
             email=email,
             password=password,
             first_name=data['first_name'],
             last_name=data['last_name'],
-            primary_style=data.get('primary_style'),
-            belt_rank=data.get('belt_rank')
+            primary_style=data.get('martial_art'),  # Map martial_art to primary_style
+            belt_rank=data.get('current_belt')       # Map current_belt to belt_rank
         )
         
         user.save()
+        print(f"User created successfully: {user.email}")
         
         # Create tokens
         access_token = create_access_token(identity=user.id)
         refresh_token = create_refresh_token(identity=user.id)
         
+        # Return user data with consistent field names for frontend
+        user_data = user.to_dict()
+        # Map backend fields to frontend expected fields
+        user_data['martial_art'] = user.primary_style
+        user_data['current_belt'] = user.belt_rank
+        
         return jsonify({
             'message': 'User registered successfully',
-            'user': user.to_dict(),
-            'access_token': access_token,
+            'user': user_data,
+            'token': access_token,  # Frontend expects 'token' not 'access_token'
             'refresh_token': refresh_token
         }), 201
         
     except Exception as e:
         current_app.logger.error(f"Registration error: {str(e)}")
-        return jsonify({'message': 'Registration failed'}), 500
+        print(f"Registration error: {str(e)}")
+        return jsonify({'message': f'Registration failed: {str(e)}'}), 500
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
     """Authenticate user and return tokens"""
     try:
         data = request.get_json()
+        print(f"Login attempt with email: {data.get('email')}")
         
         # Validate required fields
         if not data.get('email') or not data.get('password'):
@@ -75,23 +83,37 @@ def login():
         
         # Find user
         user = User.find_by_email(data['email'])
-        if not user or not user.check_password(data['password']):
+        if not user:
+            print(f"User not found: {data['email']}")
             return jsonify({'message': 'Invalid email or password'}), 401
+            
+        if not user.check_password(data['password']):
+            print(f"Invalid password for user: {data['email']}")
+            return jsonify({'message': 'Invalid email or password'}), 401
+        
+        print(f"Login successful for user: {user.email}")
         
         # Create tokens
         access_token = create_access_token(identity=user.id)
         refresh_token = create_refresh_token(identity=user.id)
         
+        # Return user data with consistent field names for frontend
+        user_data = user.to_dict()
+        # Map backend fields to frontend expected fields
+        user_data['martial_art'] = user.primary_style
+        user_data['current_belt'] = user.belt_rank
+        
         return jsonify({
             'message': 'Login successful',
-            'user': user.to_dict(),
-            'access_token': access_token,
+            'user': user_data,
+            'token': access_token,  # Frontend expects 'token' not 'access_token'
             'refresh_token': refresh_token
         }), 200
         
     except Exception as e:
         current_app.logger.error(f"Login error: {str(e)}")
-        return jsonify({'message': 'Login failed'}), 500
+        print(f"Login error: {str(e)}")
+        return jsonify({'message': f'Login failed: {str(e)}'}), 500
 
 @auth_bp.route('/refresh', methods=['POST'])
 @jwt_required(refresh=True)
@@ -106,9 +128,14 @@ def refresh():
         
         new_token = create_access_token(identity=current_user_id)
         
+        # Return user data with consistent field names
+        user_data = user.to_dict()
+        user_data['martial_art'] = user.primary_style
+        user_data['current_belt'] = user.belt_rank
+        
         return jsonify({
-            'access_token': new_token,
-            'user': user.to_dict()
+            'token': new_token,  # Frontend expects 'token'
+            'user': user_data
         }), 200
         
     except Exception as e:
@@ -126,8 +153,13 @@ def get_current_user():
         if not user:
             return jsonify({'message': 'User not found'}), 404
         
+        # Return user data with consistent field names
+        user_data = user.to_dict()
+        user_data['martial_art'] = user.primary_style
+        user_data['current_belt'] = user.belt_rank
+        
         return jsonify({
-            'user': user.to_dict()
+            'user': user_data
         }), 200
         
     except Exception as e:
@@ -152,10 +184,10 @@ def update_current_user():
             user.first_name = data['first_name'].strip()
         if 'last_name' in data:
             user.last_name = data['last_name'].strip()
-        if 'primary_style' in data:
-            user.primary_style = data['primary_style']
-        if 'belt_rank' in data:
-            user.belt_rank = data['belt_rank']
+        if 'martial_art' in data:
+            user.primary_style = data['martial_art']
+        if 'current_belt' in data:
+            user.belt_rank = data['current_belt']
         
         # Handle email update (requires validation)
         if 'email' in data:
@@ -180,9 +212,14 @@ def update_current_user():
         
         user.save()
         
+        # Return user data with consistent field names
+        user_data = user.to_dict()
+        user_data['martial_art'] = user.primary_style
+        user_data['current_belt'] = user.belt_rank
+        
         return jsonify({
             'message': 'User updated successfully',
-            'user': user.to_dict()
+            'user': user_data
         }), 200
         
     except Exception as e:
