@@ -1,8 +1,8 @@
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime, date
-from models.training import TrainingSession, TechniqueProgress, db
-from models.user import User
+from models.user import db
+from models.training import TrainingSession, TechniqueProgress
 
 training_bp = Blueprint('training', __name__)
 
@@ -17,12 +17,28 @@ def get_training_sessions():
         # Get query parameters
         limit = request.args.get('limit', type=int)
         style = request.args.get('style')
+        date_from = request.args.get('from')  # YYYY-MM-DD format
+        date_to = request.args.get('to')      # YYYY-MM-DD format
         
         # Build query
         query = TrainingSession.query.filter_by(user_id=current_user_id)
         
         if style:
             query = query.filter_by(style=style)
+            
+        if date_from:
+            try:
+                from_date = datetime.strptime(date_from, '%Y-%m-%d').date()
+                query = query.filter(TrainingSession.date >= from_date)
+            except ValueError:
+                return jsonify({'message': 'Invalid from date format. Use YYYY-MM-DD'}), 400
+                
+        if date_to:
+            try:
+                to_date = datetime.strptime(date_to, '%Y-%m-%d').date()
+                query = query.filter(TrainingSession.date <= to_date)
+            except ValueError:
+                return jsonify({'message': 'Invalid to date format. Use YYYY-MM-DD'}), 400
             
         query = query.order_by(TrainingSession.date.desc())
         
@@ -33,7 +49,8 @@ def get_training_sessions():
         
         return jsonify({
             'sessions': [session.to_dict() for session in sessions],
-            'count': len(sessions)
+            'count': len(sessions),
+            'message': 'Training sessions retrieved successfully'
         }), 200
         
     except Exception as e:
@@ -48,6 +65,9 @@ def create_training_session():
         current_user_id = get_jwt_identity()
         data = request.get_json()
         
+        if not data:
+            return jsonify({'message': 'No data provided'}), 400
+        
         # Validate required fields
         required_fields = ['duration', 'style']
         for field in required_fields:
@@ -59,7 +79,7 @@ def create_training_session():
             duration = int(data['duration'])
             if duration <= 0:
                 return jsonify({'message': 'Duration must be a positive number'}), 400
-        except ValueError:
+        except (ValueError, TypeError):
             return jsonify({'message': 'Duration must be a valid number'}), 400
         
         # Parse date if provided
@@ -74,6 +94,13 @@ def create_training_session():
         intensity_level = data.get('intensity_level', 5)
         if not isinstance(intensity_level, int) or intensity_level < 1 or intensity_level > 10:
             return jsonify({'message': 'Intensity level must be between 1 and 10'}), 400
+        
+        # Validate energy levels if provided
+        for field in ['energy_before', 'energy_after']:
+            if data.get(field) is not None:
+                energy = data[field]
+                if not isinstance(energy, int) or energy < 1 or energy > 10:
+                    return jsonify({'message': f'{field} must be between 1 and 10'}), 400
         
         # Create training session
         session = TrainingSession(
@@ -92,7 +119,8 @@ def create_training_session():
             max_heart_rate=data.get('max_heart_rate')
         )
         
-        session.save()
+        db.session.add(session)
+        db.session.commit()
         
         return jsonify({
             'message': 'Training session created successfully',
@@ -101,6 +129,7 @@ def create_training_session():
         
     except Exception as e:
         current_app.logger.error(f"Create training session error: {str(e)}")
+        db.session.rollback()
         return jsonify({'message': 'Failed to create training session'}), 500
 
 @training_bp.route('/sessions/<int:session_id>', methods=['GET'])
@@ -118,7 +147,10 @@ def get_training_session(session_id):
         if not session:
             return jsonify({'message': 'Training session not found'}), 404
         
-        return jsonify({'session': session.to_dict()}), 200
+        return jsonify({
+            'session': session.to_dict(),
+            'message': 'Training session retrieved successfully'
+        }), 200
         
     except Exception as e:
         current_app.logger.error(f"Get training session error: {str(e)}")
@@ -140,6 +172,8 @@ def update_training_session(session_id):
             return jsonify({'message': 'Training session not found'}), 404
         
         data = request.get_json()
+        if not data:
+            return jsonify({'message': 'No data provided'}), 400
         
         # Update fields
         if 'duration' in data:
@@ -148,7 +182,7 @@ def update_training_session(session_id):
                 if duration <= 0:
                     return jsonify({'message': 'Duration must be a positive number'}), 400
                 session.duration = duration
-            except ValueError:
+            except (ValueError, TypeError):
                 return jsonify({'message': 'Duration must be a valid number'}), 400
         
         if 'style' in data:
@@ -178,7 +212,8 @@ def update_training_session(session_id):
             if field in data:
                 setattr(session, field, data[field])
         
-        session.save()
+        session.updated_at = datetime.utcnow()
+        db.session.commit()
         
         return jsonify({
             'message': 'Training session updated successfully',
@@ -187,6 +222,7 @@ def update_training_session(session_id):
         
     except Exception as e:
         current_app.logger.error(f"Update training session error: {str(e)}")
+        db.session.rollback()
         return jsonify({'message': 'Failed to update training session'}), 500
 
 @training_bp.route('/sessions/<int:session_id>', methods=['DELETE'])
@@ -204,12 +240,14 @@ def delete_training_session(session_id):
         if not session:
             return jsonify({'message': 'Training session not found'}), 404
         
-        session.delete()
+        db.session.delete(session)
+        db.session.commit()
         
         return jsonify({'message': 'Training session deleted successfully'}), 200
         
     except Exception as e:
         current_app.logger.error(f"Delete training session error: {str(e)}")
+        db.session.rollback()
         return jsonify({'message': 'Failed to delete training session'}), 500
 
 # Technique Progress Routes
@@ -220,12 +258,22 @@ def get_technique_progress():
     try:
         current_user_id = get_jwt_identity()
         style = request.args.get('style')
+        mastery_status = request.args.get('status')  # learning, practicing, competent, mastery
         
-        techniques = TechniqueProgress.get_user_techniques(current_user_id, style)
+        query = TechniqueProgress.query.filter_by(user_id=current_user_id)
+        
+        if style:
+            query = query.filter_by(style=style)
+            
+        if mastery_status:
+            query = query.filter_by(mastery_status=mastery_status)
+        
+        techniques = query.order_by(TechniqueProgress.technique_name).all()
         
         return jsonify({
             'techniques': [technique.to_dict() for technique in techniques],
-            'count': len(techniques)
+            'count': len(techniques),
+            'message': 'Techniques retrieved successfully'
         }), 200
         
     except Exception as e:
@@ -239,6 +287,9 @@ def create_technique_progress():
     try:
         current_user_id = get_jwt_identity()
         data = request.get_json()
+        
+        if not data:
+            return jsonify({'message': 'No data provided'}), 400
         
         # Validate required fields
         required_fields = ['technique_name', 'style']
@@ -271,7 +322,8 @@ def create_technique_progress():
             video_url=data.get('video_url')
         )
         
-        technique.save()
+        db.session.add(technique)
+        db.session.commit()
         
         return jsonify({
             'message': 'Technique progress created successfully',
@@ -280,6 +332,7 @@ def create_technique_progress():
         
     except Exception as e:
         current_app.logger.error(f"Create technique progress error: {str(e)}")
+        db.session.rollback()
         return jsonify({'message': 'Failed to create technique progress'}), 500
 
 @training_bp.route('/techniques/<int:technique_id>', methods=['PUT'])
@@ -298,6 +351,8 @@ def update_technique_progress(technique_id):
             return jsonify({'message': 'Technique not found'}), 404
         
         data = request.get_json()
+        if not data:
+            return jsonify({'message': 'No data provided'}), 400
         
         # Update proficiency level and notes if provided
         proficiency_level = data.get('proficiency_level')
@@ -314,7 +369,7 @@ def update_technique_progress(technique_id):
         if 'video_url' in data:
             technique.video_url = data['video_url']
         
-        technique.save()
+        db.session.commit()
         
         return jsonify({
             'message': 'Technique progress updated successfully',
@@ -323,6 +378,7 @@ def update_technique_progress(technique_id):
         
     except Exception as e:
         current_app.logger.error(f"Update technique progress error: {str(e)}")
+        db.session.rollback()
         return jsonify({'message': 'Failed to update technique progress'}), 500
 
 @training_bp.route('/techniques/<int:technique_id>', methods=['DELETE'])
@@ -340,12 +396,14 @@ def delete_technique_progress(technique_id):
         if not technique:
             return jsonify({'message': 'Technique not found'}), 404
         
-        technique.delete()
+        db.session.delete(technique)
+        db.session.commit()
         
         return jsonify({'message': 'Technique progress deleted successfully'}), 200
         
     except Exception as e:
         current_app.logger.error(f"Delete technique progress error: {str(e)}")
+        db.session.rollback()
         return jsonify({'message': 'Failed to delete technique progress'}), 500
 
 # Statistics and Analytics Routes
@@ -365,7 +423,10 @@ def get_training_stats():
                 'total_hours': 0,
                 'avg_intensity': 0,
                 'styles_practiced': [],
-                'recent_sessions': []
+                'this_week': {'sessions': 0, 'hours': 0},
+                'this_month': {'sessions': 0, 'hours': 0},
+                'recent_sessions': [],
+                'message': 'No training sessions found'
             }), 200
         
         # Calculate statistics
@@ -392,6 +453,18 @@ def get_training_stats():
         this_week_sessions = [s for s in sessions if s.date >= week_ago]
         this_month_sessions = [s for s in sessions if s.date >= month_ago]
         
+        # Get technique statistics
+        techniques = TechniqueProgress.query.filter_by(user_id=current_user_id).all()
+        technique_stats = {
+            'total_techniques': len(techniques),
+            'mastery_breakdown': {}
+        }
+        
+        # Count techniques by mastery status
+        for technique in techniques:
+            status = technique.mastery_status
+            technique_stats['mastery_breakdown'][status] = technique_stats['mastery_breakdown'].get(status, 0) + 1
+        
         return jsonify({
             'total_sessions': total_sessions,
             'total_hours': total_hours,
@@ -405,17 +478,63 @@ def get_training_stats():
                 'sessions': len(this_month_sessions),
                 'hours': round(sum(s.duration for s in this_month_sessions) / 60, 2)
             },
-            'recent_sessions': [session.to_dict() for session in recent_sessions]
+            'recent_sessions': [session.to_dict() for session in recent_sessions],
+            'technique_stats': technique_stats,
+            'message': 'Training statistics retrieved successfully'
         }), 200
         
     except Exception as e:
         current_app.logger.error(f"Get training stats error: {str(e)}")
         return jsonify({'message': 'Failed to get training statistics'}), 500
 
+@training_bp.route('/styles', methods=['GET'])
+@jwt_required()
+def get_user_styles():
+    """Get all martial arts styles the user has trained in"""
+    try:
+        current_user_id = get_jwt_identity()
+        
+        # Get unique styles from training sessions
+        session_styles = db.session.query(TrainingSession.style).filter_by(
+            user_id=current_user_id
+        ).distinct().all()
+        
+        # Get unique styles from techniques
+        technique_styles = db.session.query(TechniqueProgress.style).filter_by(
+            user_id=current_user_id
+        ).distinct().all()
+        
+        # Combine and deduplicate
+        all_styles = set()
+        for style_tuple in session_styles:
+            all_styles.add(style_tuple[0])
+        for style_tuple in technique_styles:
+            all_styles.add(style_tuple[0])
+        
+        styles_list = sorted(list(all_styles))
+        
+        return jsonify({
+            'styles': styles_list,
+            'count': len(styles_list),
+            'message': 'User styles retrieved successfully'
+        }), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"Get user styles error: {str(e)}")
+        return jsonify({'message': 'Failed to get user styles'}), 500
+
 @training_bp.route('/test', methods=['GET'])
 def test_training():
     """Test endpoint for training system"""
     return jsonify({
         'message': 'Training system is working',
-        'timestamp': str(datetime.utcnow())
+        'timestamp': str(datetime.utcnow()),
+        'endpoints': {
+            'sessions': ['GET', 'POST'],
+            'sessions/<id>': ['GET', 'PUT', 'DELETE'],
+            'techniques': ['GET', 'POST'],
+            'techniques/<id>': ['PUT', 'DELETE'],
+            'stats': ['GET'],
+            'styles': ['GET']
+        }
     }), 200

@@ -3,6 +3,8 @@
 @import './styles/components/buttons.css';
 @import './styles/components/forms.css';
 @import './styles/components/cards.css';
+@import './styles/components/training.css';
+@import './styles/components/modal.css';
 @import './styles/pages/auth.css';
 @import './styles/pages/home.css';
 @import './styles/pages/dashboard.css';
@@ -33,6 +35,40 @@
   margin-bottom: var(--spacing-lg);
 }
 
+/* Success message styles */
+.success-message {
+  padding: var(--spacing-md);
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: var(--radius-md);
+  color: var(--success-color);
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--spacing-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.success-message::before {
+  content: "✅";
+  flex-shrink: 0;
+}
+
+/* Loading spinner improvements */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl);
+  gap: var(--spacing-md);
+}
+
+.loading-container p {
+  color: var(--text-secondary);
+  margin: 0;
+}
+
 /* Accessibility improvements */
 @media (prefers-reduced-motion: reduce) {
   * {
@@ -45,6 +81,8 @@
 /* Focus styles for keyboard navigation */
 .btn:focus-visible,
 .form-input:focus-visible,
+.form-textarea:focus-visible,
+.form-range:focus-visible,
 .nav-link:focus-visible,
 .auth-link:focus-visible {
   outline: 2px solid var(--primary-color);
@@ -57,5 +95,23 @@
     --border-color: #000000;
     --text-primary: #000000;
     --text-secondary: #333333;
+  }
+}
+
+/* Print styles */
+@media print {
+
+  .header,
+  .main-navigation,
+  .footer,
+  .btn,
+  .form-actions {
+    display: none;
+  }
+
+  .session-card,
+  .technique-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 }

@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-// Use port 8000 to avoid Windows port 5000 conflicts
+// Use port 8000 to match your Flask backend
 const api = axios.create({
     baseURL: 'http://localhost:8000/api',
     headers: {
@@ -39,13 +39,18 @@ api.interceptors.response.use(
 
         if (error.code === 'ECONNREFUSED' || error.message === 'Network Error') {
             console.error('🚨 BACKEND NOT RUNNING!');
-            console.error('💡 Start backend with: python app.py');
+            console.error('💡 Start backend with: cd backend && python app.py');
+            console.error('💡 Backend should be running on http://localhost:8000');
         }
 
         if (error.response?.status === 401) {
+            console.warn('🔒 Unauthorized - redirecting to login');
             localStorage.removeItem('token');
             localStorage.removeItem('user');
-            window.location.href = '/login';
+            // Only redirect if we're not already on auth pages
+            if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register')) {
+                window.location.href = '/login';
+            }
         }
 
         return Promise.reject(error);
