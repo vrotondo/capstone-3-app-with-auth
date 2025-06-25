@@ -13,6 +13,7 @@ const initialState = {
 const authReducer = (state, action) => {
     switch (action.type) {
         case 'LOGIN_SUCCESS':
+            console.log('🔐 AuthContext: LOGIN_SUCCESS', action.payload);
             return {
                 ...state,
                 user: action.payload.user,
@@ -21,6 +22,7 @@ const authReducer = (state, action) => {
                 isLoading: false,
             };
         case 'LOGOUT':
+            console.log('🚪 AuthContext: LOGOUT');
             return {
                 ...state,
                 user: null,
@@ -29,11 +31,13 @@ const authReducer = (state, action) => {
                 isLoading: false,
             };
         case 'SET_LOADING':
+            console.log('⏳ AuthContext: SET_LOADING', action.payload);
             return {
                 ...state,
                 isLoading: action.payload,
             };
         case 'AUTH_ERROR':
+            console.log('❌ AuthContext: AUTH_ERROR');
             return {
                 ...state,
                 user: null,
@@ -54,12 +58,14 @@ export const AuthProvider = ({ children }) => {
         const token = localStorage.getItem('token');
         const user = localStorage.getItem('user');
 
-        console.log('AuthContext initialization - token:', !!token, 'user:', !!user);
+        console.log('🔍 AuthContext initialization:');
+        console.log('Token in localStorage:', token ? `${token.substring(0, 20)}...` : 'None');
+        console.log('User in localStorage:', user ? 'Present' : 'None');
 
         if (token && user) {
             try {
                 const parsedUser = JSON.parse(user);
-                console.log('Restored user from localStorage:', parsedUser);
+                console.log('✅ Restored user from localStorage:', parsedUser);
                 dispatch({
                     type: 'LOGIN_SUCCESS',
                     payload: {
@@ -68,27 +74,43 @@ export const AuthProvider = ({ children }) => {
                     },
                 });
             } catch (error) {
-                console.error('Error parsing stored user data:', error);
+                console.error('❌ Error parsing stored user data:', error);
                 localStorage.removeItem('token');
                 localStorage.removeItem('user');
                 dispatch({ type: 'SET_LOADING', payload: false });
             }
         } else {
+            console.log('ℹ️ No stored auth data found');
             dispatch({ type: 'SET_LOADING', payload: false });
         }
     }, []);
 
     const login = async (email, password) => {
         try {
-            console.log('AuthContext: Starting login process for:', email);
+            console.log('🔐 AuthContext: Starting login process for:', email);
             dispatch({ type: 'SET_LOADING', payload: true });
 
             const response = await authService.login(email, password);
-            console.log('AuthContext: Login response received:', response);
+            console.log('✅ AuthContext: Login response received:', response);
+
+            // Verify the response structure
+            if (!response.token) {
+                throw new Error('No token received from server');
+            }
+            if (!response.user) {
+                throw new Error('No user data received from server');
+            }
 
             // Store the token and user data
+            console.log('💾 Storing token in localStorage:', response.token.substring(0, 20) + '...');
             localStorage.setItem('token', response.token);
             localStorage.setItem('user', JSON.stringify(response.user));
+
+            // Verify storage worked
+            const storedToken = localStorage.getItem('token');
+            const storedUser = localStorage.getItem('user');
+            console.log('✅ Verification - Token stored:', storedToken ? 'Yes' : 'No');
+            console.log('✅ Verification - User stored:', storedUser ? 'Yes' : 'No');
 
             dispatch({
                 type: 'LOGIN_SUCCESS',
@@ -98,10 +120,10 @@ export const AuthProvider = ({ children }) => {
                 },
             });
 
-            console.log('AuthContext: Login successful, user authenticated');
+            console.log('🎉 AuthContext: Login successful, user authenticated');
             return { success: true };
         } catch (error) {
-            console.error('AuthContext: Login failed:', error);
+            console.error('❌ AuthContext: Login failed:', error);
             dispatch({ type: 'AUTH_ERROR' });
 
             // Extract error message
@@ -121,13 +143,22 @@ export const AuthProvider = ({ children }) => {
 
     const register = async (userData) => {
         try {
-            console.log('AuthContext: Starting registration process');
+            console.log('📝 AuthContext: Starting registration process');
             dispatch({ type: 'SET_LOADING', payload: true });
 
             const response = await authService.register(userData);
-            console.log('AuthContext: Registration response received:', response);
+            console.log('✅ AuthContext: Registration response received:', response);
+
+            // Verify the response structure
+            if (!response.token) {
+                throw new Error('No token received from server');
+            }
+            if (!response.user) {
+                throw new Error('No user data received from server');
+            }
 
             // Store the token and user data
+            console.log('💾 Storing token in localStorage:', response.token.substring(0, 20) + '...');
             localStorage.setItem('token', response.token);
             localStorage.setItem('user', JSON.stringify(response.user));
 
@@ -139,10 +170,10 @@ export const AuthProvider = ({ children }) => {
                 },
             });
 
-            console.log('AuthContext: Registration successful, user authenticated');
+            console.log('🎉 AuthContext: Registration successful, user authenticated');
             return { success: true };
         } catch (error) {
-            console.error('AuthContext: Registration failed:', error);
+            console.error('❌ AuthContext: Registration failed:', error);
             dispatch({ type: 'AUTH_ERROR' });
 
             // Extract error message
@@ -161,7 +192,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     const logout = () => {
-        console.log('AuthContext: Logging out user');
+        console.log('🚪 AuthContext: Logging out user');
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         dispatch({ type: 'LOGOUT' });
@@ -173,6 +204,13 @@ export const AuthProvider = ({ children }) => {
         register,
         logout,
     };
+
+    console.log('📊 AuthContext current state:', {
+        isAuthenticated: state.isAuthenticated,
+        hasUser: !!state.user,
+        hasToken: !!state.token,
+        isLoading: state.isLoading
+    });
 
     return (
         <AuthContext.Provider value={value}>
