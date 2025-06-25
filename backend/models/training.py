@@ -1,5 +1,5 @@
 from datetime import datetime
-from app import db
+from models.user import db  # Import db from user model to maintain consistency
 
 class TrainingSession(db.Model):
     __tablename__ = 'training_sessions'

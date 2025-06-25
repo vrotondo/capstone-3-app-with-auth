@@ -1,13 +1,14 @@
 import os
 from flask import Flask, jsonify
-from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 from flask_migrate import Migrate
 from config import config
 
-# Initialize extensions
-db = SQLAlchemy()
+# Import db from models
+from models.user import db
+
+# Initialize other extensions
 jwt = JWTManager()
 migrate = Migrate()
 
