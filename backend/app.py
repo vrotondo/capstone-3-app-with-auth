@@ -24,21 +24,40 @@ def create_app():
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['JWT_SECRET_KEY'] = 'jwt-secret-change-in-production'
     app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=24)
+    app.config['JWT_ALGORITHM'] = 'HS256'
 
     # Initialize extensions with app
     db.init_app(app)
     jwt.init_app(app)
 
-    # CORS setup for Windows
+    # JWT error handlers
+    @jwt.expired_token_loader
+    def expired_token_callback(jwt_header, jwt_payload):
+        return jsonify({'message': 'Token has expired'}), 401
+
+    @jwt.invalid_token_loader
+    def invalid_token_callback(error):
+        return jsonify({'message': 'Invalid token'}), 401
+
+    @jwt.unauthorized_loader
+    def missing_token_callback(error):
+        return jsonify({'message': 'Authorization token is required'}), 401
+
+    # CORS setup
     CORS(app, 
          origins=['http://localhost:3000', 'http://127.0.0.1:3000'],
          methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
          allow_headers=['Content-Type', 'Authorization'],
          supports_credentials=True)
 
-    # Import models after db is initialized
-    from models.user import User
-    from models.training import TrainingSession, TechniqueProgress
+    # Create models
+    from models.user import create_models
+    User, TrainingSession, TechniqueProgress = create_models(db)
+    
+    # Make models available globally in the app
+    app.User = User
+    app.TrainingSession = TrainingSession
+    app.TechniqueProgress = TechniqueProgress
 
     # Register blueprints
     from routes.auth import auth_bp
@@ -68,6 +87,10 @@ def create_app():
     @app.errorhandler(500)
     def internal_error(error):
         return jsonify({'message': 'Internal server error'}), 500
+
+    @app.errorhandler(422)
+    def unprocessable_entity(error):
+        return jsonify({'message': 'Unprocessable entity - check your request data'}), 422
 
     return app
 

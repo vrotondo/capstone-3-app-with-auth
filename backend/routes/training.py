@@ -1,10 +1,12 @@
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime, date
-from models.user import db
-from models.training import TrainingSession, TechniqueProgress
 
 training_bp = Blueprint('training', __name__)
+
+def get_db():
+    """Get database instance from current app"""
+    return current_app.extensions['sqlalchemy']
 
 # Training Sessions Routes
 @training_bp.route('/sessions', methods=['GET'])
@@ -13,12 +15,17 @@ def get_training_sessions():
     """Get all training sessions for the current user"""
     try:
         current_user_id = get_jwt_identity()
+        print(f"🔍 Getting sessions for user ID: {current_user_id}")
+        
+        TrainingSession = current_app.TrainingSession
         
         # Get query parameters
         limit = request.args.get('limit', type=int)
         style = request.args.get('style')
         date_from = request.args.get('from')  # YYYY-MM-DD format
         date_to = request.args.get('to')      # YYYY-MM-DD format
+        
+        print(f"📋 Query params - limit: {limit}, style: {style}, from: {date_from}, to: {date_to}")
         
         # Build query
         query = TrainingSession.query.filter_by(user_id=current_user_id)
@@ -46,6 +53,7 @@ def get_training_sessions():
             query = query.limit(limit)
             
         sessions = query.all()
+        print(f"✅ Found {len(sessions)} sessions")
         
         return jsonify({
             'sessions': [session.to_dict() for session in sessions],
@@ -54,8 +62,11 @@ def get_training_sessions():
         }), 200
         
     except Exception as e:
+        print(f"❌ Get training sessions error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         current_app.logger.error(f"Get training sessions error: {str(e)}")
-        return jsonify({'message': 'Failed to get training sessions'}), 500
+        return jsonify({'message': f'Failed to get training sessions: {str(e)}'}), 500
 
 @training_bp.route('/sessions', methods=['POST'])
 @jwt_required()
@@ -64,6 +75,9 @@ def create_training_session():
     try:
         current_user_id = get_jwt_identity()
         data = request.get_json()
+        
+        TrainingSession = current_app.TrainingSession
+        db = get_db()
         
         if not data:
             return jsonify({'message': 'No data provided'}), 400
@@ -129,6 +143,7 @@ def create_training_session():
         
     except Exception as e:
         current_app.logger.error(f"Create training session error: {str(e)}")
+        db = get_db()
         db.session.rollback()
         return jsonify({'message': 'Failed to create training session'}), 500
 
@@ -138,6 +153,7 @@ def get_training_session(session_id):
     """Get a specific training session"""
     try:
         current_user_id = get_jwt_identity()
+        TrainingSession = current_app.TrainingSession
         
         session = TrainingSession.query.filter_by(
             id=session_id, 
@@ -162,6 +178,8 @@ def update_training_session(session_id):
     """Update a training session"""
     try:
         current_user_id = get_jwt_identity()
+        TrainingSession = current_app.TrainingSession
+        db = get_db()
         
         session = TrainingSession.query.filter_by(
             id=session_id, 
@@ -222,6 +240,7 @@ def update_training_session(session_id):
         
     except Exception as e:
         current_app.logger.error(f"Update training session error: {str(e)}")
+        db = get_db()
         db.session.rollback()
         return jsonify({'message': 'Failed to update training session'}), 500
 
@@ -231,6 +250,8 @@ def delete_training_session(session_id):
     """Delete a training session"""
     try:
         current_user_id = get_jwt_identity()
+        TrainingSession = current_app.TrainingSession
+        db = get_db()
         
         session = TrainingSession.query.filter_by(
             id=session_id, 
@@ -247,6 +268,7 @@ def delete_training_session(session_id):
         
     except Exception as e:
         current_app.logger.error(f"Delete training session error: {str(e)}")
+        db = get_db()
         db.session.rollback()
         return jsonify({'message': 'Failed to delete training session'}), 500
 
@@ -257,6 +279,8 @@ def get_technique_progress():
     """Get technique progress for the current user"""
     try:
         current_user_id = get_jwt_identity()
+        TechniqueProgress = current_app.TechniqueProgress
+        
         style = request.args.get('style')
         mastery_status = request.args.get('status')  # learning, practicing, competent, mastery
         
@@ -287,6 +311,9 @@ def create_technique_progress():
     try:
         current_user_id = get_jwt_identity()
         data = request.get_json()
+        
+        TechniqueProgress = current_app.TechniqueProgress
+        db = get_db()
         
         if not data:
             return jsonify({'message': 'No data provided'}), 400
@@ -332,6 +359,7 @@ def create_technique_progress():
         
     except Exception as e:
         current_app.logger.error(f"Create technique progress error: {str(e)}")
+        db = get_db()
         db.session.rollback()
         return jsonify({'message': 'Failed to create technique progress'}), 500
 
@@ -341,52 +369,8 @@ def update_technique_progress(technique_id):
     """Update technique progress"""
     try:
         current_user_id = get_jwt_identity()
-        
-        technique = TechniqueProgress.query.filter_by(
-            id=technique_id,
-            user_id=current_user_id
-        ).first()
-        
-        if not technique:
-            return jsonify({'message': 'Technique not found'}), 404
-        
-        data = request.get_json()
-        if not data:
-            return jsonify({'message': 'No data provided'}), 400
-        
-        # Update proficiency level and notes if provided
-        proficiency_level = data.get('proficiency_level')
-        notes = data.get('notes')
-        
-        if proficiency_level is not None:
-            if not isinstance(proficiency_level, int) or proficiency_level < 1 or proficiency_level > 10:
-                return jsonify({'message': 'Proficiency level must be between 1 and 10'}), 400
-        
-        # Use the update_practice method which handles automatic updates
-        technique.update_practice(proficiency_level=proficiency_level, notes=notes)
-        
-        # Update other fields if provided
-        if 'video_url' in data:
-            technique.video_url = data['video_url']
-        
-        db.session.commit()
-        
-        return jsonify({
-            'message': 'Technique progress updated successfully',
-            'technique': technique.to_dict()
-        }), 200
-        
-    except Exception as e:
-        current_app.logger.error(f"Update technique progress error: {str(e)}")
-        db.session.rollback()
-        return jsonify({'message': 'Failed to update technique progress'}), 500
-
-@training_bp.route('/techniques/<int:technique_id>', methods=['DELETE'])
-@jwt_required()
-def delete_technique_progress(technique_id):
-    """Delete technique progress"""
-    try:
-        current_user_id = get_jwt_identity()
+        TechniqueProgress = current_app.TechniqueProgress
+        db = get_db()
         
         technique = TechniqueProgress.query.filter_by(
             id=technique_id,
@@ -403,6 +387,7 @@ def delete_technique_progress(technique_id):
         
     except Exception as e:
         current_app.logger.error(f"Delete technique progress error: {str(e)}")
+        db = get_db()
         db.session.rollback()
         return jsonify({'message': 'Failed to delete technique progress'}), 500
 
@@ -413,9 +398,14 @@ def get_training_stats():
     """Get training statistics for the current user"""
     try:
         current_user_id = get_jwt_identity()
+        print(f"🔍 Getting stats for user ID: {current_user_id}")
+        
+        TrainingSession = current_app.TrainingSession
+        TechniqueProgress = current_app.TechniqueProgress
         
         # Get all sessions for the user
         sessions = TrainingSession.query.filter_by(user_id=current_user_id).all()
+        print(f"📊 Found {len(sessions)} training sessions")
         
         if not sessions:
             return jsonify({
@@ -426,6 +416,7 @@ def get_training_stats():
                 'this_week': {'sessions': 0, 'hours': 0},
                 'this_month': {'sessions': 0, 'hours': 0},
                 'recent_sessions': [],
+                'technique_stats': {'total_techniques': 0, 'mastery_breakdown': {}},
                 'message': 'No training sessions found'
             }), 200
         
@@ -455,6 +446,8 @@ def get_training_stats():
         
         # Get technique statistics
         techniques = TechniqueProgress.query.filter_by(user_id=current_user_id).all()
+        print(f"🎯 Found {len(techniques)} techniques")
+        
         technique_stats = {
             'total_techniques': len(techniques),
             'mastery_breakdown': {}
@@ -465,7 +458,7 @@ def get_training_stats():
             status = technique.mastery_status
             technique_stats['mastery_breakdown'][status] = technique_stats['mastery_breakdown'].get(status, 0) + 1
         
-        return jsonify({
+        result = {
             'total_sessions': total_sessions,
             'total_hours': total_hours,
             'avg_intensity': avg_intensity,
@@ -481,11 +474,17 @@ def get_training_stats():
             'recent_sessions': [session.to_dict() for session in recent_sessions],
             'technique_stats': technique_stats,
             'message': 'Training statistics retrieved successfully'
-        }), 200
+        }
+        
+        print(f"✅ Stats calculated successfully")
+        return jsonify(result), 200
         
     except Exception as e:
+        print(f"❌ Get training stats error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         current_app.logger.error(f"Get training stats error: {str(e)}")
-        return jsonify({'message': 'Failed to get training statistics'}), 500
+        return jsonify({'message': f'Failed to get training statistics: {str(e)}'}), 500
 
 @training_bp.route('/styles', methods=['GET'])
 @jwt_required()
@@ -493,6 +492,9 @@ def get_user_styles():
     """Get all martial arts styles the user has trained in"""
     try:
         current_user_id = get_jwt_identity()
+        TrainingSession = current_app.TrainingSession
+        TechniqueProgress = current_app.TechniqueProgress
+        db = get_db()
         
         # Get unique styles from training sessions
         session_styles = db.session.query(TrainingSession.style).filter_by(
@@ -538,3 +540,68 @@ def test_training():
             'styles': ['GET']
         }
     }), 200
+
+@training_bp.route('/test-auth', methods=['GET'])
+@jwt_required()
+def test_training_auth():
+    """Test endpoint for JWT authentication"""
+    try:
+        current_user_id = get_jwt_identity()
+        print(f"🔐 Auth test - User ID: {current_user_id}")
+        return jsonify({
+            'message': 'Training authentication is working',
+            'user_id': current_user_id,
+            'timestamp': str(datetime.utcnow())
+        }), 200
+    except Exception as e:
+        print(f"❌ Auth test error: {str(e)}")
+        return jsonify({'message': f'Auth test failed: {str(e)}'}), 500()
+        
+        if not technique:
+            return jsonify({'message': 'Technique not found'}), 404
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({'message': 'No data provided'}), 400
+        
+        # Update proficiency level and notes if provided
+        proficiency_level = data.get('proficiency_level')
+        notes = data.get('notes')
+        
+        if proficiency_level is not None:
+            if not isinstance(proficiency_level, int) or proficiency_level < 1 or proficiency_level > 10:
+                return jsonify({'message': 'Proficiency level must be between 1 and 10'}), 400
+        
+        # Use the update_practice method which handles automatic updates
+        technique.update_practice(proficiency_level=proficiency_level, notes=notes)
+        
+        # Update other fields if provided
+        if 'video_url' in data:
+            technique.video_url = data['video_url']
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Technique progress updated successfully',
+            'technique': technique.to_dict()
+        }), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"Update technique progress error: {str(e)}")
+        db = get_db()
+        db.session.rollback()
+        return jsonify({'message': 'Failed to update technique progress'}), 500
+
+@training_bp.route('/techniques/<int:technique_id>', methods=['DELETE'])
+@jwt_required()
+def delete_technique_progress(technique_id):
+    """Delete technique progress"""
+    try:
+        current_user_id = get_jwt_identity()
+        TechniqueProgress = current_app.TechniqueProgress
+        db = get_db()
+        
+        technique = TechniqueProgress.query.filter_by(
+            id=technique_id,
+            user_id=current_user_id
+        ).first
