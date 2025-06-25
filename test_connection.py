@@ -8,8 +8,15 @@ import requests
 import json
 import sys
 import time
+import random
+import string
 
 BASE_URL = 'http://localhost:8000'
+
+def generate_test_email():
+    """Generate a valid test email"""
+    random_string = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
+    return f"test_{random_string}@example.com"
 
 def test_endpoint(method, endpoint, data=None, headers=None, expected_status=200):
     """Test an API endpoint"""
@@ -94,8 +101,13 @@ def run_comprehensive_tests():
     
     # Test user registration and authentication flow
     print("\n👤 Testing User Registration & Authentication")
+    
+    # Generate a proper test email
+    test_email = generate_test_email()
+    print(f"Using test email: {test_email}")
+    
     user_data = {
-        'email': f'test{int(time.time())}@example.com',  # Unique email
+        'email': test_email,
         'password': 'password123',
         'first_name': 'Test',
         'last_name': 'User',
@@ -104,6 +116,9 @@ def run_comprehensive_tests():
         'dojo': 'Test Dojo'
     }
     
+    # Debug: Print the data being sent
+    print(f"Registration data: {json.dumps(user_data, indent=2)}")
+    
     # Register user
     register_response = test_endpoint('POST', '/api/auth/register', data=user_data, expected_status=201)
     
@@ -111,7 +126,17 @@ def run_comprehensive_tests():
         token = register_response['token']
         headers = {'Authorization': f'Bearer {token}'}
         
+        print(f"\n🔑 Got token: {token[:20]}...")
+        print(f"🔍 Headers being sent: {headers}")
         print("\n🔒 Testing Authenticated Endpoints")
+        
+        # First test the /me endpoint to verify token works
+        print("\n🧪 Testing token with /me endpoint first...")
+        me_response = test_endpoint('GET', '/api/auth/me', headers=headers)
+        
+        if not me_response:
+            print("❌ Token validation failed - cannot continue with other tests")
+            return False
         
         # Test get current user
         test_endpoint('GET', '/api/auth/me', headers=headers)
@@ -163,6 +188,8 @@ def run_comprehensive_tests():
         return True
     else:
         print("\n❌ Registration test failed - cannot continue with authenticated tests")
+        if register_response:
+            print(f"Registration response: {json.dumps(register_response, indent=2)}")
         return False
 
 def main():

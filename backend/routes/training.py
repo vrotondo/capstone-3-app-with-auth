@@ -380,6 +380,55 @@ def update_technique_progress(technique_id):
         if not technique:
             return jsonify({'message': 'Technique not found'}), 404
         
+        data = request.get_json()
+        if not data:
+            return jsonify({'message': 'No data provided'}), 400
+        
+        # Update proficiency level and notes if provided
+        proficiency_level = data.get('proficiency_level')
+        notes = data.get('notes')
+        
+        if proficiency_level is not None:
+            if not isinstance(proficiency_level, int) or proficiency_level < 1 or proficiency_level > 10:
+                return jsonify({'message': 'Proficiency level must be between 1 and 10'}), 400
+        
+        # Use the update_practice method which handles automatic updates
+        technique.update_practice(proficiency_level=proficiency_level, notes=notes)
+        
+        # Update other fields if provided
+        if 'video_url' in data:
+            technique.video_url = data['video_url']
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Technique progress updated successfully',
+            'technique': technique.to_dict()
+        }), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"Update technique progress error: {str(e)}")
+        db = get_db()
+        db.session.rollback()
+        return jsonify({'message': 'Failed to update technique progress'}), 500
+
+@training_bp.route('/techniques/<int:technique_id>', methods=['DELETE'])
+@jwt_required()
+def delete_technique_progress(technique_id):
+    """Delete technique progress"""
+    try:
+        current_user_id = get_jwt_identity()
+        TechniqueProgress = current_app.TechniqueProgress
+        db = get_db()
+        
+        technique = TechniqueProgress.query.filter_by(
+            id=technique_id,
+            user_id=current_user_id
+        ).first()
+        
+        if not technique:
+            return jsonify({'message': 'Technique not found'}), 404
+        
         db.session.delete(technique)
         db.session.commit()
         
@@ -555,53 +604,4 @@ def test_training_auth():
         }), 200
     except Exception as e:
         print(f"❌ Auth test error: {str(e)}")
-        return jsonify({'message': f'Auth test failed: {str(e)}'}), 500()
-        
-        if not technique:
-            return jsonify({'message': 'Technique not found'}), 404
-        
-        data = request.get_json()
-        if not data:
-            return jsonify({'message': 'No data provided'}), 400
-        
-        # Update proficiency level and notes if provided
-        proficiency_level = data.get('proficiency_level')
-        notes = data.get('notes')
-        
-        if proficiency_level is not None:
-            if not isinstance(proficiency_level, int) or proficiency_level < 1 or proficiency_level > 10:
-                return jsonify({'message': 'Proficiency level must be between 1 and 10'}), 400
-        
-        # Use the update_practice method which handles automatic updates
-        technique.update_practice(proficiency_level=proficiency_level, notes=notes)
-        
-        # Update other fields if provided
-        if 'video_url' in data:
-            technique.video_url = data['video_url']
-        
-        db.session.commit()
-        
-        return jsonify({
-            'message': 'Technique progress updated successfully',
-            'technique': technique.to_dict()
-        }), 200
-        
-    except Exception as e:
-        current_app.logger.error(f"Update technique progress error: {str(e)}")
-        db = get_db()
-        db.session.rollback()
-        return jsonify({'message': 'Failed to update technique progress'}), 500
-
-@training_bp.route('/techniques/<int:technique_id>', methods=['DELETE'])
-@jwt_required()
-def delete_technique_progress(technique_id):
-    """Delete technique progress"""
-    try:
-        current_user_id = get_jwt_identity()
-        TechniqueProgress = current_app.TechniqueProgress
-        db = get_db()
-        
-        technique = TechniqueProgress.query.filter_by(
-            id=technique_id,
-            user_id=current_user_id
-        ).first
+        return jsonify({'message': f'Auth test failed: {str(e)}'}), 500

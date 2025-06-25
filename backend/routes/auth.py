@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
-from email_validator import validate_email, EmailNotValidError
 from datetime import datetime
+import re
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -24,22 +24,40 @@ def register():
         required_fields = ['email', 'password', 'first_name', 'last_name']
         for field in required_fields:
             if not data.get(field):
+                print(f"Missing required field: {field}")
                 return jsonify({'message': f'{field} is required'}), 400
         
         # Validate email format
+        email = data['email'].strip().lower()
+        print(f"Validating email: '{email}'")
+        
         try:
-            valid = validate_email(data['email'])
+            from email_validator import validate_email, EmailNotValidError
+            valid = validate_email(email)
             email = valid.email
-        except EmailNotValidError:
-            return jsonify({'message': 'Invalid email format'}), 400
+            print(f"Email validation successful: '{email}'")
+        except EmailNotValidError as e:
+            print(f"Email validation failed: {str(e)}")
+            return jsonify({'message': f'Invalid email format: {str(e)}'}), 400
+        except ImportError:
+            print("email-validator not installed, using basic validation")
+            # Basic email validation if email-validator is not available
+            email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+            if not re.match(email_pattern, email):
+                print(f"Basic email validation failed for: '{email}'")
+                return jsonify({'message': 'Invalid email format'}), 400
+            print(f"Basic email validation successful: '{email}'")
         
         # Check if user already exists
-        if User.find_by_email(email):
+        existing_user = User.find_by_email(email)
+        if existing_user:
+            print(f"User already exists with email: {email}")
             return jsonify({'message': 'User with this email already exists'}), 409
         
         # Validate password strength
         password = data['password']
         if len(password) < 6:
+            print(f"Password too short: {len(password)} characters")
             return jsonify({'message': 'Password must be at least 6 characters long'}), 400
         
         # Create new user with correct field mapping
@@ -60,6 +78,8 @@ def register():
         access_token = create_access_token(identity=user.id)
         refresh_token = create_refresh_token(identity=user.id)
         
+        print(f"Tokens created successfully - Access token: {access_token[:20]}...")
+        
         # Return user data with consistent field names for frontend
         user_data = user.to_dict()
         
@@ -73,6 +93,8 @@ def register():
     except Exception as e:
         current_app.logger.error(f"Registration error: {str(e)}")
         print(f"Registration error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'message': f'Registration failed: {str(e)}'}), 500
 
 @auth_bp.route('/login', methods=['POST'])
@@ -203,6 +225,7 @@ def update_current_user():
         # Handle email update (requires validation)
         if 'email' in data:
             try:
+                from email_validator import validate_email, EmailNotValidError
                 valid = validate_email(data['email'])
                 new_email = valid.email
                 
@@ -214,6 +237,12 @@ def update_current_user():
                 user.email = new_email
             except EmailNotValidError:
                 return jsonify({'message': 'Invalid email format'}), 400
+            except ImportError:
+                # Basic email validation
+                email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+                if not re.match(email_pattern, data['email']):
+                    return jsonify({'message': 'Invalid email format'}), 400
+                user.email = data['email'].strip().lower()
         
         # Handle password update
         if 'password' in data:
@@ -242,3 +271,18 @@ def test_auth():
         'message': 'Authentication system is working',
         'timestamp': str(datetime.utcnow())
     }), 200
+
+# Debug endpoint to test JWT token
+@auth_bp.route('/test-jwt', methods=['GET'])
+@jwt_required()
+def test_jwt():
+    """Test endpoint for JWT authentication"""
+    try:
+        current_user_id = get_jwt_identity()
+        return jsonify({
+            'message': 'JWT authentication is working',
+            'user_id': current_user_id,
+            'timestamp': str(datetime.utcnow())
+        }), 200
+    except Exception as e:
+        return jsonify({'message': f'JWT test failed: {str(e)}'}), 500
