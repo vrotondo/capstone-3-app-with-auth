@@ -1,16 +1,19 @@
 import os
 import sys
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
-from flask_jwt_extended import JWTManager, create_access_token
-from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime, timedelta
+from flask_jwt_extended import JWTManager
+from datetime import timedelta
 
 print("=" * 50)
 print("🥋 DojoTracker Starting...")
 print("📁 Current directory:", os.getcwd())
 print("🐍 Python version:", sys.version)
+
+# Initialize extensions
+db = SQLAlchemy()
+jwt = JWTManager()
 
 def create_app():
     app = Flask(__name__)
@@ -22,7 +25,7 @@ def create_app():
     app.config['JWT_SECRET_KEY'] = 'jwt-secret-change-in-production'
     app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=24)
 
-    # Initialize extensions
+    # Initialize extensions with app
     db.init_app(app)
     jwt.init_app(app)
 
@@ -32,6 +35,10 @@ def create_app():
          methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
          allow_headers=['Content-Type', 'Authorization'],
          supports_credentials=True)
+
+    # Import models after db is initialized
+    from models.user import User
+    from models.training import TrainingSession, TechniqueProgress
 
     # Register blueprints
     from routes.auth import auth_bp
@@ -63,14 +70,6 @@ def create_app():
         return jsonify({'message': 'Internal server error'}), 500
 
     return app
-
-# Initialize extensions
-db = SQLAlchemy()
-jwt = JWTManager()
-
-# Import models after db is defined
-from models.user import User
-from models.training import TrainingSession, TechniqueProgress
 
 if __name__ == '__main__':
     app = create_app()
