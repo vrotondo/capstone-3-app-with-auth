@@ -146,6 +146,33 @@ def create_app():
             'jwt_header_type': app.config.get('JWT_HEADER_TYPE'),
             'jwt_algorithm': app.config.get('JWT_ALGORITHM')
         })
+    
+    @app.before_request
+    def debug_jwt_token():
+        """Debug JWT token in requests"""
+        if request.endpoint and 'training' in request.endpoint:
+            print(f"\n🔍 JWT Debug for {request.method} {request.path}")
+            print(f"Headers: {dict(request.headers)}")
+            
+            auth_header = request.headers.get('Authorization')
+            if auth_header:
+                print(f"Authorization header: {auth_header[:50]}...")
+                if auth_header.startswith('Bearer '):
+                    token = auth_header[7:]  # Remove 'Bearer ' prefix
+                    print(f"Token (first 30 chars): {token[:30]}...")
+                    
+                    # Try to decode the token to see if it's valid
+                    try:
+                        from flask_jwt_extended import decode_token
+                        decoded = decode_token(token)
+                        print(f"Token decoded successfully: user_id = {decoded['sub']}")
+                    except Exception as e:
+                        print(f"Token decode error: {str(e)}")
+                else:
+                    print("❌ Authorization header doesn't start with 'Bearer '")
+            else:
+                print("❌ No Authorization header found")
+            print("---")
 
     return app
 
