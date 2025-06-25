@@ -1,10 +1,3 @@
-/* Main App Styles */
-.app {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
 /* Import all component and page styles */
 @import './styles/components/layout.css';
 @import './styles/components/buttons.css';
@@ -13,6 +6,13 @@
 @import './styles/pages/auth.css';
 @import './styles/pages/home.css';
 @import './styles/pages/dashboard.css';
+
+/* Main App Styles */
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
 
 /* Additional app-specific styles */
 .error-boundary {
