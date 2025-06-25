@@ -22,7 +22,14 @@ def create_app(config_name=None):
     # Initialize extensions with app
     db.init_app(app)
     jwt.init_app(app)
-    CORS(app, origins=app.config['CORS_ORIGINS'])
+    
+    # Configure CORS more explicitly for development
+    CORS(app, 
+         origins=['http://localhost:3000', 'http://127.0.0.1:3000'],
+         allow_headers=['Content-Type', 'Authorization'],
+         methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+         supports_credentials=True)
+    
     migrate.init_app(app, db)
     
     # Import models (this must be after db initialization)
@@ -49,6 +56,11 @@ def create_app(config_name=None):
     def health_check():
         return jsonify({'status': 'healthy', 'database': 'connected'})
     
+    # Test CORS endpoint
+    @app.route('/api/test-cors', methods=['GET', 'POST', 'OPTIONS'])
+    def test_cors():
+        return jsonify({'message': 'CORS is working', 'method': 'success'})
+    
     # JWT error handlers
     @jwt.expired_token_loader
     def expired_token_callback(jwt_header, jwt_payload):
@@ -62,10 +74,28 @@ def create_app(config_name=None):
     def missing_token_callback(error):
         return jsonify({'message': 'Authorization token is required'}), 401
     
+    # Add error handlers
+    @app.errorhandler(404)
+    def not_found(error):
+        return jsonify({'message': 'Endpoint not found'}), 404
+    
+    @app.errorhandler(500)
+    def internal_error(error):
+        return jsonify({'message': 'Internal server error'}), 500
+    
     return app
 
 if __name__ == '__main__':
     app = create_app()
     with app.app_context():
-        db.create_all()  # Create tables on first run
-    app.run(debug=True, port=5000)
+        try:
+            # Create tables on first run
+            db.create_all()
+            print("✅ Database tables created successfully")
+        except Exception as e:
+            print(f"❌ Database error: {str(e)}")
+    
+    print("🚀 Starting DojoTracker server...")
+    print("📍 Server running at: http://localhost:5000")
+    print("🔗 Frontend should connect from: http://localhost:3000")
+    app.run(debug=True, port=5000, host='0.0.0.0')
