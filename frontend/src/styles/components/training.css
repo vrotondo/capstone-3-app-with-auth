@@ -1000,17 +1000,42 @@
     border-left: 3px solid var(--primary-color);
 }
 
-.session-notes-preview p {
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-    margin: 0;
-    font-style: italic;
-    text-align: left;
-    line-height: 1.4;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+.technique-description,
+.enhanced-technique-name,
+.my-technique-name {
+    max-height: 4.2em;
     overflow: hidden;
+    position: relative;
+    line-height: 1.4em;
+}
+
+.technique-description::after,
+.enhanced-technique-name::after,
+.my-technique-name::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 30px;
+    height: 1.4em;
+    background: linear-gradient(to right, transparent, white);
+    pointer-events: none;
+}
+
+/* For technique cards specifically */
+.technique-card .technique-description {
+    max-height: 4.2em;
+    overflow: hidden;
+    line-height: 1.4em;
+    position: relative;
+}
+
+.enhanced-technique-card .enhanced-technique-name {
+    max-height: 2.6em;
+    /* 2 lines */
+    overflow: hidden;
+    line-height: 1.3em;
+    position: relative;
 }
 
 /* Card actions */

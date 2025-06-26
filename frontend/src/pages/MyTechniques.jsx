@@ -136,10 +136,10 @@ const MyTechniques = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                    <p className="mt-4 text-gray-600">Loading your techniques...</p>
+            <div className="my-techniques-page">
+                <div className="loading-container">
+                    <div className="spinner spinner-md"></div>
+                    <p>Loading your techniques...</p>
                 </div>
             </div>
         );
@@ -147,12 +147,14 @@ const MyTechniques = () => {
 
     if (error) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="text-center">
-                    <div className="text-red-500 text-lg font-medium">{error}</div>
+            <div className="my-techniques-page">
+                <div className="techniques-empty-state">
+                    <div className="empty-icon">⚠️</div>
+                    <h3 className="empty-title">Error Loading Techniques</h3>
+                    <p className="empty-subtitle">{error}</p>
                     <button
                         onClick={loadBookmarks}
-                        className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                        className="get-started-btn"
                     >
                         Try Again
                     </button>
@@ -164,141 +166,125 @@ const MyTechniques = () => {
     const filteredBookmarks = getFilteredAndSortedBookmarks();
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <div className="bg-white shadow-sm border-b">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-                                <Star className="mr-3 h-8 w-8 text-yellow-500 fill-current" />
-                                My Techniques
-                            </h1>
-                            <p className="mt-2 text-gray-600">
-                                Track your progress and practice your bookmarked techniques
-                            </p>
-                        </div>
-
-                        <button
-                            onClick={() => navigate('/techniques')}
-                            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                        >
-                            <Plus className="h-5 w-5 mr-2" />
-                            Browse Library
-                        </button>
-                    </div>
-                </div>
+        <div className="my-techniques-page">
+            {/* Enhanced Header */}
+            <div className="my-techniques-header">
+                <h1 className="my-techniques-title">My Techniques</h1>
+                <p className="my-techniques-subtitle">
+                    Track your progress and practice your bookmarked techniques
+                </p>
             </div>
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {bookmarks.length === 0 ? (
-                    // Empty state
-                    <div className="text-center py-12">
-                        <BookOpen className="mx-auto h-12 w-12 text-gray-400" />
-                        <h3 className="mt-2 text-lg font-medium text-gray-900">No techniques bookmarked yet</h3>
-                        <p className="mt-1 text-gray-500 mb-6">
-                            Start building your personal technique collection by bookmarking techniques from the library
-                        </p>
-                        <button
-                            onClick={() => navigate('/techniques')}
-                            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                        >
-                            Explore Technique Library
-                        </button>
+            {bookmarks.length === 0 ? (
+                // Enhanced Empty State
+                <div className="techniques-empty-state">
+                    <div className="empty-icon">🥋</div>
+                    <h3 className="empty-title">No techniques bookmarked yet</h3>
+                    <p className="empty-subtitle">
+                        Start building your personal technique collection by bookmarking techniques from the library
+                    </p>
+                    <button
+                        onClick={() => navigate('/techniques')}
+                        className="get-started-btn"
+                    >
+                        Explore Technique Library
+                    </button>
+                </div>
+            ) : (
+                <>
+                    {/* Enhanced Stats Grid */}
+                    <div className="techniques-stats-grid">
+                        <div className="technique-stat-card">
+                            <span className="stat-icon total">📚</span>
+                            <span className="stat-number">{stats.total}</span>
+                            <span className="stat-label">Total Techniques</span>
+                        </div>
+
+                        <div className="technique-stat-card">
+                            <span className="stat-icon learning">🌱</span>
+                            <span className="stat-number">{stats.learning}</span>
+                            <span className="stat-label">Learning</span>
+                        </div>
+
+                        <div className="technique-stat-card">
+                            <span className="stat-icon practicing">⚡</span>
+                            <span className="stat-number">{stats.practicing}</span>
+                            <span className="stat-label">Practicing</span>
+                        </div>
+
+                        <div className="technique-stat-card">
+                            <span className="stat-icon improving">📈</span>
+                            <span className="stat-number">{stats.improving}</span>
+                            <span className="stat-label">Improving</span>
+                        </div>
+
+                        <div className="technique-stat-card">
+                            <span className="stat-icon mastered">🏆</span>
+                            <span className="stat-number">{stats.mastered}</span>
+                            <span className="stat-label">Mastered</span>
+                        </div>
                     </div>
-                ) : (
-                    <>
-                        {/* Stats Cards */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-                            <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-blue-500">
-                                <div className="flex items-center">
-                                    <BookOpen className="h-8 w-8 text-blue-500" />
-                                    <div className="ml-3">
-                                        <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
-                                        <div className="text-sm text-gray-500">Total Techniques</div>
-                                    </div>
-                                </div>
+
+                    {/* Enhanced Controls */}
+                    <div className="techniques-controls">
+                        <div className="controls-header">
+                            <h3 className="controls-title">Filter & Sort</h3>
+                            <button
+                                onClick={() => navigate('/techniques')}
+                                className="browse-library-btn"
+                            >
+                                Browse Library
+                            </button>
+                        </div>
+
+                        <div className="controls-row">
+                            <div className="control-group">
+                                <label className="control-label">📂 Filter by Progress</label>
+                                <select
+                                    value={filterBy}
+                                    onChange={(e) => setFilterBy(e.target.value)}
+                                    className="control-select"
+                                >
+                                    <option value="all">All Techniques</option>
+                                    <option value="learning">Learning (1-2)</option>
+                                    <option value="practicing">Practicing (3-4)</option>
+                                    <option value="improving">Improving (5-7)</option>
+                                    <option value="mastered">Mastered (8-10)</option>
+                                </select>
                             </div>
 
-                            <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-red-500">
-                                <div className="flex items-center">
-                                    <Target className="h-8 w-8 text-red-500" />
-                                    <div className="ml-3">
-                                        <div className="text-2xl font-bold text-gray-900">{stats.learning}</div>
-                                        <div className="text-sm text-gray-500">Learning</div>
-                                    </div>
-                                </div>
+                            <div className="control-group">
+                                <label className="control-label">🔄 Sort by</label>
+                                <select
+                                    value={sortBy}
+                                    onChange={(e) => setSortBy(e.target.value)}
+                                    className="control-select"
+                                >
+                                    <option value="recent">Most Recent</option>
+                                    <option value="name">Name A-Z</option>
+                                    <option value="mastery">Highest Mastery</option>
+                                    <option value="practice">Most Practiced</option>
+                                </select>
                             </div>
 
-                            <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-yellow-500">
-                                <div className="flex items-center">
-                                    <Clock className="h-8 w-8 text-yellow-500" />
-                                    <div className="ml-3">
-                                        <div className="text-2xl font-bold text-gray-900">{stats.practicing}</div>
-                                        <div className="text-sm text-gray-500">Practicing</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-blue-500">
-                                <div className="flex items-center">
-                                    <TrendingUp className="h-8 w-8 text-blue-500" />
-                                    <div className="ml-3">
-                                        <div className="text-2xl font-bold text-gray-900">{stats.improving}</div>
-                                        <div className="text-sm text-gray-500">Improving</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-green-500">
-                                <div className="flex items-center">
-                                    <Award className="h-8 w-8 text-green-500" />
-                                    <div className="ml-3">
-                                        <div className="text-2xl font-bold text-gray-900">{stats.mastered}</div>
-                                        <div className="text-sm text-gray-500">Mastered</div>
-                                    </div>
+                            <div className="control-group">
+                                <label className="control-label">📊 Results</label>
+                                <div className="techniques-count">
+                                    {filteredBookmarks.length} of {bookmarks.length}
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        {/* Filters and Sorting */}
-                        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-                            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-                                <div className="flex flex-wrap gap-4">
-                                    <select
-                                        value={filterBy}
-                                        onChange={(e) => setFilterBy(e.target.value)}
-                                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                    >
-                                        <option value="all">All Techniques</option>
-                                        <option value="learning">Learning (1-2)</option>
-                                        <option value="practicing">Practicing (3-4)</option>
-                                        <option value="improving">Improving (5-7)</option>
-                                        <option value="mastered">Mastered (8-10)</option>
-                                    </select>
-
-                                    <select
-                                        value={sortBy}
-                                        onChange={(e) => setSortBy(e.target.value)}
-                                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                    >
-                                        <option value="recent">Most Recent</option>
-                                        <option value="name">Name A-Z</option>
-                                        <option value="mastery">Highest Mastery</option>
-                                        <option value="practice">Most Practiced</option>
-                                    </select>
-                                </div>
-
-                                <div className="text-sm text-gray-600">
-                                    Showing {filteredBookmarks.length} of {bookmarks.length} techniques
-                                </div>
-                            </div>
+                    {/* Enhanced Techniques List */}
+                    <div className="techniques-list-section">
+                        <div className="list-header">
+                            <h2 className="list-title">Your Techniques</h2>
                         </div>
 
-                        {/* Techniques List */}
-                        <div className="space-y-6">
+                        <div className="my-techniques-grid">
                             {filteredBookmarks.map((bookmark) => (
-                                <TechniqueCard
+                                <EnhancedTechniqueCard
                                     key={bookmark.id}
                                     bookmark={bookmark}
                                     onRemove={removeBookmark}
@@ -307,15 +293,15 @@ const MyTechniques = () => {
                                 />
                             ))}
                         </div>
-                    </>
-                )}
-            </div>
+                    </div>
+                </>
+            )}
         </div>
     );
 };
 
-// Individual Technique Card Component
-const TechniqueCard = ({ bookmark, onRemove, onUpdateProgress, onViewDetail }) => {
+// Enhanced Individual Technique Card Component
+const EnhancedTechniqueCard = ({ bookmark, onRemove, onUpdateProgress, onViewDetail }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [newMasteryLevel, setNewMasteryLevel] = useState(bookmark.mastery_level || 1);
 
@@ -329,18 +315,11 @@ const TechniqueCard = ({ bookmark, onRemove, onUpdateProgress, onViewDetail }) =
         return 'Mastered';
     };
 
-    const getMasteryColor = (level) => {
-        if (level <= 2) return 'text-red-600 bg-red-50';
-        if (level <= 4) return 'text-yellow-600 bg-yellow-50';
-        if (level <= 7) return 'text-blue-600 bg-blue-50';
-        return 'text-green-600 bg-green-50';
-    };
-
-    const getDifficultyColor = (level) => {
-        if (!level) return 'bg-gray-500';
-        if (level <= 3) return 'bg-green-500';
-        if (level <= 6) return 'bg-yellow-500';
-        return 'bg-red-500';
+    const getMasteryClass = (level) => {
+        if (level <= 2) return 'learning';
+        if (level <= 4) return 'practicing';
+        if (level <= 7) return 'improving';
+        return 'mastered';
     };
 
     const handleMasteryChange = (newLevel) => {
@@ -349,152 +328,171 @@ const TechniqueCard = ({ bookmark, onRemove, onUpdateProgress, onViewDetail }) =
     };
 
     return (
-        <div className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow">
-            <div className="p-6">
-                {/* Header */}
-                <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-3">
-                            <h3
-                                className="text-xl font-semibold text-gray-900 hover:text-blue-600 cursor-pointer"
-                                onClick={() => onViewDetail(technique.id)}
-                            >
-                                {technique.name}
-                            </h3>
+        <div className="enhanced-technique-card">
+            {/* Level Badge */}
+            <div className={`level-badge ${getMasteryClass(masteryLevel)}`}>
+                Level {technique.difficulty_level || '?'}
+            </div>
 
-                            <span className={`px-2 py-1 text-xs font-medium text-white rounded-full ${getDifficultyColor(technique.difficulty_level)}`}>
-                                {technique.difficulty_level ? `Level ${technique.difficulty_level}` : 'Unknown'}
-                            </span>
-                        </div>
-
-                        <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
-                            <span className="font-medium text-blue-600">{technique.style}</span>
-                            {technique.category && (
-                                <span className="text-gray-500">• {technique.category}</span>
-                            )}
-                            <span className="text-gray-500">
-                                • Bookmarked {techniqueService.formatDate(bookmark.bookmarked_at)}
-                            </span>
-                        </div>
-
-                        {/* Progress Section */}
-                        <div className="flex items-center gap-6 mb-4">
-                            <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium text-gray-700">Progress:</span>
-                                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getMasteryColor(masteryLevel)}`}>
-                                    {getMasteryText(masteryLevel)} ({masteryLevel}/10)
-                                </span>
-                            </div>
-
-                            <div className="flex items-center gap-2 text-sm text-gray-600">
-                                <BarChart3 className="h-4 w-4" />
-                                <span>{bookmark.practice_count || 0} sessions</span>
-                            </div>
-
-                            {bookmark.last_practiced && (
-                                <div className="flex items-center gap-2 text-sm text-gray-600">
-                                    <Calendar className="h-4 w-4" />
-                                    <span>Last: {techniqueService.formatDate(bookmark.last_practiced)}</span>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Mastery Level Slider */}
-                        <div className="mb-4">
-                            <div className="flex items-center justify-between mb-2">
-                                <label className="text-sm font-medium text-gray-700">
-                                    Update Mastery Level:
-                                </label>
-                                <span className="text-sm text-gray-600">{newMasteryLevel}/10</span>
-                            </div>
-                            <input
-                                type="range"
-                                min="1"
-                                max="10"
-                                value={newMasteryLevel}
-                                onChange={(e) => {
-                                    const level = parseInt(e.target.value);
-                                    setNewMasteryLevel(level);
-                                    handleMasteryChange(level);
-                                }}
-                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-                            />
-                            <div className="flex justify-between text-xs text-gray-500 mt-1">
-                                <span>Learning</span>
-                                <span>Practicing</span>
-                                <span>Improving</span>
-                                <span>Mastered</span>
-                            </div>
-                        </div>
-
-                        {/* Personal Notes */}
-                        {bookmark.personal_notes && (
-                            <div className="bg-gray-50 rounded-lg p-3 mb-4">
-                                <div className="text-sm font-medium text-gray-700 mb-1">Personal Notes:</div>
-                                <div className="text-sm text-gray-600">{bookmark.personal_notes}</div>
-                            </div>
-                        )}
-
-                        {/* Description Preview */}
-                        {technique.description && (
-                            <div className="mb-4">
-                                <p className="text-sm text-gray-600 line-clamp-2">
-                                    {isExpanded
-                                        ? technique.description
-                                        : techniqueService.truncateText(technique.description, 200)
-                                    }
-                                </p>
-                                {technique.description.length > 200 && (
-                                    <button
-                                        onClick={() => setIsExpanded(!isExpanded)}
-                                        className="text-blue-600 hover:text-blue-700 text-sm font-medium mt-1"
-                                    >
-                                        {isExpanded ? 'Show less' : 'Show more'}
-                                    </button>
-                                )}
-                            </div>
-                        )}
-
-                        {/* Tags */}
-                        {technique.tags && technique.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mb-4">
-                                {technique.tags.slice(0, 5).map((tag, index) => (
-                                    <span key={index} className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
-                                        #{tag}
-                                    </span>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex flex-col gap-2 ml-4">
-                        <button
-                            onClick={() => onViewDetail(technique.id)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="View Details"
-                        >
-                            <BookOpen className="h-5 w-5" />
-                        </button>
-
-                        <button
-                            onClick={() => onRemove(technique.id)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Remove Bookmark"
-                        >
-                            <Trash2 className="h-5 w-5" />
-                        </button>
-                    </div>
+            {/* Enhanced Header */}
+            <div className="enhanced-technique-header">
+                <h3
+                    className="enhanced-technique-name"
+                    onClick={() => onViewDetail(technique.id)}
+                    style={{ cursor: 'pointer' }}
+                >
+                    {technique.name}
+                </h3>
+                <div className="technique-meta-badges">
+                    <span className="style-badge">{technique.style}</span>
+                    <span className="bookmark-badge">Bookmarked</span>
                 </div>
             </div>
 
-            {/* Progress Bar */}
-            <div className="px-6 pb-4">
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${(masteryLevel / 10) * 100}%` }}
-                    ></div>
+            {/* Enhanced Progress Section */}
+            <div className="technique-progress-section">
+                <div className="progress-header">
+                    <h4 className="progress-title">Progress</h4>
+                    <div className="sessions-count">
+                        {bookmark.practice_count || 0} sessions
+                    </div>
+                </div>
+
+                <div className="mastery-progress">
+                    <div className="mastery-label">
+                        {getMasteryText(masteryLevel)} ({masteryLevel}/10)
+                    </div>
+                    <div className="mastery-bar">
+                        <div
+                            className="mastery-fill"
+                            style={{ width: `${(masteryLevel / 10) * 100}%` }}
+                        ></div>
+                    </div>
+                </div>
+
+                {/* Mastery Level Slider */}
+                <div style={{ margin: '1rem 0' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <label style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-primary)' }}>
+                            Update Level:
+                        </label>
+                        <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                            {newMasteryLevel}/10
+                        </span>
+                    </div>
+                    <input
+                        type="range"
+                        min="1"
+                        max="10"
+                        value={newMasteryLevel}
+                        onChange={(e) => {
+                            const level = parseInt(e.target.value);
+                            setNewMasteryLevel(level);
+                            handleMasteryChange(level);
+                        }}
+                        style={{
+                            width: '100%',
+                            height: '8px',
+                            background: '#e5e7eb',
+                            borderRadius: '4px',
+                            outline: 'none',
+                            cursor: 'pointer'
+                        }}
+                    />
+                </div>
+
+                {bookmark.last_practiced && (
+                    <div className="last-practiced">
+                        Last practiced: {techniqueService.formatDate(bookmark.last_practiced)}
+                    </div>
+                )}
+            </div>
+
+            {/* Personal Notes */}
+            {bookmark.personal_notes && (
+                <div className="personal-notes">
+                    <h5 className="notes-title">Personal Notes:</h5>
+                    <p className="notes-text">{bookmark.personal_notes}</p>
+                </div>
+            )}
+
+            {/* Description */}
+            {technique.description && (
+                <div style={{ margin: '1rem 0', flex: '1' }}>
+                    <p style={{
+                        fontSize: '0.875rem',
+                        color: 'var(--text-secondary)',
+                        lineHeight: '1.4',
+                        textAlign: 'left'
+                    }}>
+                        {isExpanded
+                            ? technique.description
+                            : techniqueService.truncateText(technique.description, 120)
+                        }
+                    </p>
+                    {technique.description.length > 120 && (
+                        <button
+                            onClick={() => setIsExpanded(!isExpanded)}
+                            style={{
+                                color: 'var(--primary-color)',
+                                background: 'none',
+                                border: 'none',
+                                fontSize: '0.875rem',
+                                fontWeight: '500',
+                                cursor: 'pointer',
+                                marginTop: '0.5rem'
+                            }}
+                        >
+                            {isExpanded ? 'Show less' : 'Show more'}
+                        </button>
+                    )}
+                </div>
+            )}
+
+            {/* Tags */}
+            {technique.tags && technique.tags.length > 0 && (
+                <div style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '0.5rem',
+                    margin: '1rem 0',
+                    textAlign: 'left'
+                }}>
+                    {technique.tags.slice(0, 3).map((tag, index) => (
+                        <span
+                            key={index}
+                            style={{
+                                padding: '0.25rem 0.5rem',
+                                fontSize: '0.75rem',
+                                background: '#f3f4f6',
+                                color: '#6b7280',
+                                borderRadius: '4px'
+                            }}
+                        >
+                            #{tag}
+                        </span>
+                    ))}
+                </div>
+            )}
+
+            {/* Enhanced Card Actions */}
+            <div className="enhanced-card-actions">
+                <div className="action-buttons">
+                    <button
+                        onClick={() => onViewDetail(technique.id)}
+                        className="action-btn view-btn"
+                        title="View Details"
+                    >
+                        👁️ View
+                    </button>
+
+                    <button
+                        onClick={() => onRemove(technique.id)}
+                        className="action-btn delete-btn"
+                        title="Remove Bookmark"
+                    >
+                        🗑️ Remove
+                    </button>
                 </div>
             </div>
         </div>

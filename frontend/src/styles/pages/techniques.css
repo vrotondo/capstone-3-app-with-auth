@@ -1,5 +1,3 @@
-/* Techniques Page Styles - Improved Layout */
-
 /* Main techniques grid - improved spacing and consistency */
 .techniques-grid {
     display: grid;
@@ -237,19 +235,6 @@ input[type="text"]:focus {
     font-size: 0.75rem;
     font-weight: 600;
     text-transform: capitalize;
-}
-
-.technique-description {
-    color: var(--text-secondary, #4b5563);
-    font-size: 0.875rem;
-    line-height: 1.6;
-    margin-bottom: 1.5rem;
-    flex-grow: 1;
-    text-align: left;
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
 }
 
 .technique-stats {
@@ -524,8 +509,42 @@ input[type="text"]:focus {
         min-height: 250px;
     }
 
-    .technique-description {
-        -webkit-line-clamp: 2;
+    .technique-description,
+    .enhanced-technique-name,
+    .my-technique-name {
+        max-height: 4.2em;
+        overflow: hidden;
+        position: relative;
+        line-height: 1.4em;
+    }
+
+    .technique-description::after,
+    .enhanced-technique-name::after,
+    .my-technique-name::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 30px;
+        height: 1.4em;
+        background: linear-gradient(to right, transparent, white);
+        pointer-events: none;
+    }
+
+    /* For technique cards specifically */
+    .technique-card .technique-description {
+        max-height: 4.2em;
+        overflow: hidden;
+        line-height: 1.4em;
+        position: relative;
+    }
+
+    .enhanced-technique-card .enhanced-technique-name {
+        max-height: 2.6em;
+        /* 2 lines */
+        overflow: hidden;
+        line-height: 1.3em;
+        position: relative;
     }
 }
 

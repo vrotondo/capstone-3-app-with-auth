@@ -7,6 +7,9 @@ Handles database operations, migrations, and data management
 import sys
 import os
 from pathlib import Path
+import shutil
+from pathlib import Path
+from datetime import datetime
 
 # Add backend directory to path
 backend_dir = Path(__file__).parent
