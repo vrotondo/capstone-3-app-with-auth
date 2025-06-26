@@ -528,3 +528,498 @@ input[type="text"]:focus {
         -webkit-line-clamp: 2;
     }
 }
+
+/* MyTechniques page using same card system as dashboard */
+.my-techniques-page {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+/* Page header - consistent with dashboard */
+.my-techniques-header {
+    text-align: center;
+    margin-bottom: 3rem;
+    padding: 2rem;
+}
+
+.my-techniques-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.my-techniques-subtitle {
+    font-size: 1.125rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* Use the same grid system as dashboard */
+.my-techniques-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    width: 100%;
+    margin: 0 auto 3rem auto;
+    justify-items: center;
+}
+
+/* Progress overview card - same style as dashboard cards */
+.techniques-overview-card {
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow var(--transition-fast);
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+}
+
+.techniques-overview-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.techniques-overview-card h3 {
+    margin-bottom: var(--spacing-md);
+    color: var(--text-primary);
+    font-size: var(--font-size-lg);
+}
+
+/* Mastery breakdown inside card */
+.mastery-overview {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.mastery-stat {
+    text-align: center;
+    padding: 1rem;
+    background: var(--background-secondary);
+    border-radius: var(--radius-md);
+}
+
+.mastery-number {
+    display: block;
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.mastery-number.learning {
+    color: #f59e0b;
+}
+
+.mastery-number.practicing {
+    color: #3b82f6;
+}
+
+.mastery-number.competent {
+    color: #10b981;
+}
+
+.mastery-number.mastered {
+    color: #8b5cf6;
+}
+
+.mastery-label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    text-transform: capitalize;
+    font-weight: 500;
+}
+
+/* Recent practice card */
+.recent-practice-card {
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow var(--transition-fast);
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+}
+
+.recent-practice-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.recent-practice-card h3 {
+    margin-bottom: var(--spacing-md);
+    color: var(--text-primary);
+    font-size: var(--font-size-lg);
+}
+
+.recent-techniques-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.recent-technique-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    background: var(--background-secondary);
+    border-radius: var(--radius-md);
+    text-align: left;
+}
+
+.recent-technique-name {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.recent-technique-date {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+/* Goals card */
+.goals-card {
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow var(--transition-fast);
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+}
+
+.goals-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.goals-card h3 {
+    margin-bottom: var(--spacing-md);
+    color: var(--text-primary);
+    font-size: var(--font-size-lg);
+}
+
+.goal-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    background: var(--background-secondary);
+    border-radius: var(--radius-md);
+    text-align: left;
+}
+
+.goal-checkbox {
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 50%;
+    border: 2px solid var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.goal-checkbox.completed {
+    background: var(--primary-color);
+    color: white;
+}
+
+.goal-text {
+    font-size: 0.875rem;
+    color: var(--text-primary);
+}
+
+.goal-text.completed {
+    text-decoration: line-through;
+    color: var(--text-secondary);
+}
+
+/* Quick actions card */
+.quick-actions-card {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+    color: white;
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    box-shadow: var(--shadow-md);
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+}
+
+.quick-actions-card h3 {
+    margin-bottom: var(--spacing-md);
+    color: white;
+    font-size: var(--font-size-lg);
+}
+
+.quick-action-button {
+    background: white;
+    color: var(--primary-color);
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--radius-md);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    margin: 0.25rem;
+    display: inline-block;
+    text-decoration: none;
+}
+
+.quick-action-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+}
+
+/* All techniques list section */
+.all-techniques-section {
+    margin-top: 3rem;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    text-align: left;
+}
+
+.section-title {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+    text-align: left;
+}
+
+.add-technique-btn {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--radius-md);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.add-technique-btn:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+}
+
+/* My techniques list using same card style as technique library */
+.my-techniques-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1.5rem;
+    margin: 0 auto;
+    max-width: 1200px;
+}
+
+.my-technique-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 1px solid #f1f5f9;
+    transition: all 0.3s ease;
+    min-height: 280px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.my-technique-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* Mastery indicator in corner */
+.mastery-corner {
+    position: absolute;
+    top: 0;
+    right: 0;
+    padding: 0.5rem 1rem;
+    border-radius: 0 12px 0 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.mastery-corner.learning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.mastery-corner.practicing {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.mastery-corner.competent {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.mastery-corner.mastered {
+    background: #f3e8ff;
+    color: #7c3aed;
+}
+
+.my-technique-header {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+
+.my-technique-name {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    text-align: left;
+}
+
+.my-technique-style {
+    background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+    color: #1e40af;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.my-technique-progress {
+    background: #f9fafb;
+    padding: 1rem;
+    border-radius: 8px;
+    margin: 1rem 0;
+    flex-grow: 1;
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.sessions-practiced {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.last-practiced-date {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.personal-notes-section {
+    background: #f0f9ff;
+    padding: 0.75rem;
+    border-radius: 6px;
+    border-left: 3px solid #0ea5e9;
+    margin-bottom: 1rem;
+}
+
+.notes-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    text-align: left;
+}
+
+.notes-text {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin: 0;
+    text-align: left;
+    font-style: italic;
+    line-height: 1.4;
+}
+
+.my-technique-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: 1px solid #f3f4f6;
+}
+
+.practice-again-btn {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.practice-again-btn:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+}
+
+/* Empty state */
+.my-techniques-empty {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    border: 2px dashed #e5e7eb;
+    grid-column: 1 / -1;
+}
+
+.empty-icon {
+    font-size: 4rem;
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .my-techniques-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .my-techniques-list {
+        grid-template-columns: 1fr;
+    }
+
+    .mastery-overview {
+        grid-template-columns: 1fr;
+    }
+
+    .section-header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+        text-align: center;
+    }
+
+    .section-title {
+        text-align: center;
+    }
+}

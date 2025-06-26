@@ -1,4 +1,4 @@
-/* Import all component and page styles */
+/* Import all component and page styles FIRST */
 @import './styles/variables.css';
 @import './styles/global.css';
 @import './styles/components/layout.css';
@@ -12,11 +12,228 @@
 @import './styles/pages/dashboard.css';
 @import './styles/pages/techniques.css';
 
+/* Force everything to center by default */
+body {
+  display: flex !important;
+  justify-content: center !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background-color: var(--background-secondary) !important;
+}
+
+#root {
+  width: 100% !important;
+  max-width: 1400px !important;
+  margin: 0 auto !important;
+  display: flex !important;
+  justify-content: center !important;
+}
+
+.app {
+  width: 100% !important;
+  max-width: 1200px !important;
+  margin: 0 auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+}
+
+/* Force header to center */
+.header {
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center !important;
+}
+
+.header-content {
+  width: 100% !important;
+  max-width: 1200px !important;
+  margin: 0 auto !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding: 0 2rem !important;
+}
+
+/* Force navigation to center */
+.main-navigation {
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center !important;
+}
+
+.nav-list {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  list-style: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  gap: 2rem !important;
+}
+
+/* Force main content to center */
+.main-content {
+  width: 100% !important;
+  max-width: 1200px !important;
+  margin: 0 auto !important;
+  padding: 2rem !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+}
+
+/* Center all page content */
+.dashboard-page,
+.training-page,
+.techniques-page,
+.home-page {
+  width: 100% !important;
+  max-width: 1200px !important;
+  margin: 0 auto !important;
+  text-align: center !important;
+}
+
+/* Dashboard specific centering */
+.dashboard-header {
+  text-align: center !important;
+  margin-bottom: 3rem !important;
+}
+
+.dashboard-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important;
+  gap: 2rem !important;
+  width: 100% !important;
+  max-width: 1200px !important;
+  margin: 0 auto !important;
+  justify-items: center !important;
+}
+
+.dashboard-card {
+  width: 100% !important;
+  max-width: 400px !important;
+  margin: 0 auto !important;
+}
+
+/* Force containers to center */
+.container {
+  width: 100% !important;
+  max-width: 1200px !important;
+  margin: 0 auto !important;
+  padding: 0 2rem !important;
+  text-align: center !important;
+}
+
+/* Recent Training Sessions centering */
+.recent-sessions-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)) !important;
+  gap: 1.5rem !important;
+  width: 100% !important;
+  margin: 0 auto !important;
+  justify-items: center !important;
+}
+
+/* Footer centering */
+.footer {
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center !important;
+}
+
+.footer-content {
+  width: 100% !important;
+  max-width: 1200px !important;
+  margin: 0 auto !important;
+  text-align: center !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+
+  .header-content,
+  .main-content,
+  .container {
+    padding: 0 1rem !important;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Force center alignment for the entire website */
+* {
+  text-align: center !important;
+}
+
+/* But keep certain elements left-aligned for readability */
+.technique-card .technique-description,
+.technique-card .technique-header h3,
+.session-card p,
+.session-card .detail-item,
+.form-input,
+.form-textarea,
+input,
+textarea,
+button {
+  text-align: left !important;
+}
+
+/* Keep navigation centered */
+.nav-list {
+  justify-content: center !important;
+}
+
+/* Force all containers to center */
+.layout,
+.main-content,
+.container,
+.page-container,
+.techniques-page,
+.dashboard-page,
+.home-page {
+  margin: 0 auto !important;
+  max-width: 1200px !important;
+  text-align: center !important;
+}
+
+/* Improved technique cards */
+.techniques-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)) !important;
+  gap: 1.5rem !important;
+  max-width: 1200px !important;
+  margin: 0 auto !important;
+  padding: 0 1rem !important;
+  justify-items: center !important;
+}
+
+.technique-card {
+  min-height: 280px !important;
+  padding: 1.5rem !important;
+  border-radius: 12px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  background: white !important;
+  border: 1px solid #f1f5f9 !important;
+  transition: all 0.3s ease !important;
+  width: 100% !important;
+  max-width: 400px !important;
+}
+
+.technique-card:hover {
+  transform: translateY(-4px) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
+}
+
 /* Main App Styles */
 .app {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  width: 100%;
 }
 
 /* Additional app-specific styles */
@@ -49,6 +266,7 @@
   margin-bottom: var(--spacing-lg);
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: var(--spacing-sm);
 }
 

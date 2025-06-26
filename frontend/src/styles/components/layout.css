@@ -270,3 +270,64 @@
         font-size: var(--font-size-2xl);
     }
 }
+
+/* Ensure the navigation wrapper has the container class */
+.main-navigation .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 var(--spacing-md);
+}
+
+/* Update the main content area */
+.main-content {
+    flex: 1;
+    padding: var(--spacing-xl) 0;
+    width: 100%;
+}
+
+/* Ensure the main content uses the container */
+.main-content .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 var(--spacing-md);
+}
+
+/* Page-specific fixes */
+.techniques-page {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 var(--spacing-md);
+}
+
+/* Center all page content */
+.page-wrapper {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 var(--spacing-md);
+    text-align: center;
+}
+
+/* Override any conflicting text alignments for specific content */
+.technique-card .technique-header h3,
+.technique-card .technique-description {
+    text-align: left;
+}
+
+.results-header {
+    text-align: left;
+}
+
+.results-header h2 {
+    text-align: left;
+}
+
+/* Responsive fixes */
+@media (max-width: 768px) {
+
+    .main-content .container,
+    .techniques-page,
+    .page-wrapper {
+        padding: 0 var(--spacing-sm);
+    }
+}
