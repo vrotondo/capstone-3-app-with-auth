@@ -4,7 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import {
     Search, Filter, Star, BookOpen, Eye, TrendingUp,
     ChevronLeft, ChevronRight, Plus, Download, Upload,
-    Grid, List, SortAsc, X, Loader
+    Grid, List, SortAsc, X, Loader, Target, Award,
+    Users, Zap, Calendar, BarChart3
 } from 'lucide-react';
 import Button from '../components/common/Button';
 import techniqueService from '../services/techniqueService';
@@ -37,7 +38,7 @@ const Techniques = () => {
     const [stats, setStats] = useState({});
 
     // View mode
-    const [viewMode, setViewMode] = useState('grid'); // grid or list
+    const [viewMode, setViewMode] = useState('grid');
 
     // Load initial data
     useEffect(() => {
@@ -158,7 +159,6 @@ const Techniques = () => {
 
     const handleSearch = (e) => {
         e.preventDefault();
-        // Search will be triggered by useEffect when searchQuery changes
     };
 
     const clearFilters = () => {
@@ -202,196 +202,256 @@ const Techniques = () => {
 
     if (loading && techniques.length === 0) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                    <p className="mt-4 text-gray-600">Loading technique library...</p>
-                </div>
+            <div className="loading-container">
+                <div className="spinner spinner-md"></div>
+                <p className="mt-md text-secondary">Loading technique library...</p>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <div className="bg-white shadow-sm border-b">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-                                <BookOpen className="mr-3 h-8 w-8 text-blue-600" />
+        <div className="techniques-page">
+            {/* Hero Header */}
+            <div className="page-header">
+                <div className="container">
+                    <div className="header-content">
+                        <div className="hero-section">
+                            <h1 className="flex items-center gap-md">
+                                <BookOpen className="text-primary" size={48} />
                                 Technique Library
                             </h1>
-                            <p className="mt-2 text-gray-600">
-                                Discover and master martial arts techniques from around the world
+                            <p>
+                                Discover, learn, and master martial arts techniques from around the world.
+                                Build your personal collection and track your progress.
                             </p>
                         </div>
 
-                        <div className="flex items-center gap-4">
-                            {/* Stats */}
-                            <div className="hidden lg:flex space-x-6">
-                                <div className="text-center">
-                                    <div className="text-2xl font-bold text-blue-600">{stats.total_techniques || 0}</div>
-                                    <div className="text-sm text-gray-500">Techniques</div>
-                                </div>
-                                <div className="text-center">
-                                    <div className="text-2xl font-bold text-green-600">{stats.total_styles || 0}</div>
-                                    <div className="text-sm text-gray-500">Styles</div>
-                                </div>
-                                <div className="text-center">
-                                    <div className="text-2xl font-bold text-purple-600">{stats.total_categories || 0}</div>
-                                    <div className="text-sm text-gray-500">Categories</div>
-                                </div>
-                            </div>
+                        <div className="header-actions">
+                            {user && (
+                                <div className="flex gap-sm">
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => navigate('/my-techniques')}
+                                        className="btn-md"
+                                    >
+                                        <Star size={20} />
+                                        My Techniques
+                                    </Button>
 
-                            {/* Action Buttons */}
-                            <div className="flex gap-2">
-                                {user && (
-                                    <>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => navigate('/my-techniques')}
-                                        >
-                                            <Star className="h-4 w-4 mr-2" />
-                                            My Techniques
-                                        </Button>
-
-                                        <Button
-                                            variant="primary"
-                                            size="sm"
-                                            onClick={handleImportFromBlackBeltWiki}
-                                            disabled={importing}
-                                        >
-                                            {importing ? (
-                                                <Loader className="h-4 w-4 mr-2 animate-spin" />
-                                            ) : (
-                                                <Download className="h-4 w-4 mr-2" />
-                                            )}
-                                            {importing ? 'Importing...' : 'Import from Wiki'}
-                                        </Button>
-                                    </>
-                                )}
-                            </div>
+                                    <Button
+                                        variant="primary"
+                                        onClick={handleImportFromBlackBeltWiki}
+                                        disabled={importing}
+                                        className="btn-md"
+                                    >
+                                        {importing ? (
+                                            <Loader className="animate-spin" size={20} />
+                                        ) : (
+                                            <Download size={20} />
+                                        )}
+                                        {importing ? 'Importing...' : 'Import Techniques'}
+                                    </Button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="container">
+                {/* Stats Overview */}
+                <div className="techniques-stats">
+                    <div className="stat-item">
+                        <BookOpen className="text-primary mb-sm" size={32} />
+                        <span className="stat-number">{stats.total_techniques || 0}</span>
+                        <span className="stat-label">Total Techniques</span>
+                    </div>
+                    <div className="stat-item">
+                        <Target className="text-success mb-sm" size={32} />
+                        <span className="stat-number">{stats.total_styles || 0}</span>
+                        <span className="stat-label">Martial Arts Styles</span>
+                    </div>
+                    <div className="stat-item">
+                        <Award className="text-warning mb-sm" size={32} />
+                        <span className="stat-number">{stats.total_categories || 0}</span>
+                        <span className="stat-label">Categories</span>
+                    </div>
+                    <div className="stat-item">
+                        <Users className="text-secondary mb-sm" size={32} />
+                        <span className="stat-number">{stats.total_bookmarks || 0}</span>
+                        <span className="stat-label">Total Bookmarks</span>
+                    </div>
+                </div>
+
                 {/* Search and Filters */}
-                <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-                    <form onSubmit={handleSearch} className="flex flex-col lg:flex-row gap-4">
-                        {/* Search */}
-                        <div className="flex-1">
+                <div className="form-section">
+                    <div className="form-header">
+                        <h2>Find Techniques</h2>
+                        <p>Search and filter to find exactly what you're looking for</p>
+                    </div>
+
+                    <form onSubmit={handleSearch} className="techniques-filters">
+                        {/* Search Bar */}
+                        <div className="form-field">
+                            <label className="form-label">Search Techniques</label>
                             <div className="relative">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted" />
                                 <input
                                     type="text"
-                                    placeholder="Search techniques, styles, or categories..."
+                                    placeholder="Search by name, style, or description..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    className="form-input pl-10"
                                 />
                                 {searchQuery && (
                                     <button
                                         type="button"
                                         onClick={() => setSearchQuery('')}
-                                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted hover:text-primary"
                                     >
-                                        <X className="h-4 w-4" />
+                                        <X size={16} />
                                     </button>
                                 )}
                             </div>
                         </div>
 
-                        {/* Filters */}
-                        <div className="flex flex-wrap gap-4">
-                            <select
-                                value={selectedStyle}
-                                onChange={(e) => setSelectedStyle(e.target.value)}
-                                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                            >
-                                <option value="">All Styles</option>
-                                {styles.map(style => (
-                                    <option key={style} value={style}>{style}</option>
-                                ))}
-                            </select>
-
-                            <select
-                                value={selectedCategory}
-                                onChange={(e) => setSelectedCategory(e.target.value)}
-                                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                            >
-                                <option value="">All Categories</option>
-                                {categories.map(category => (
-                                    <option key={category} value={category}>{category}</option>
-                                ))}
-                            </select>
-
-                            <select
-                                value={selectedDifficulty}
-                                onChange={(e) => setSelectedDifficulty(e.target.value)}
-                                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                            >
-                                <option value="">All Levels</option>
-                                <option value="1">Beginner (1-3)</option>
-                                <option value="4">Intermediate (4-6)</option>
-                                <option value="7">Advanced (7-10)</option>
-                            </select>
-
-                            <select
-                                value={sortBy}
-                                onChange={(e) => setSortBy(e.target.value)}
-                                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                            >
-                                <option value="name">Sort by Name</option>
-                                <option value="difficulty">Sort by Difficulty</option>
-                                <option value="popular">Sort by Popularity</option>
-                                <option value="style">Sort by Style</option>
-                                <option value="recent">Sort by Recent</option>
-                            </select>
-                        </div>
-                    </form>
-
-                    {/* Active filters and results */}
-                    <div className="mt-4 flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <p className="text-sm text-gray-600">
-                                Showing {techniques.length} techniques
-                                {hasMore && ' (loading more available)'}
-                            </p>
-
-                            {hasActiveFilters && (
-                                <button
-                                    onClick={clearFilters}
-                                    className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center"
+                        {/* Filter Row */}
+                        <div className="filter-row">
+                            <div className="form-field">
+                                <label className="form-label">Martial Art Style</label>
+                                <select
+                                    value={selectedStyle}
+                                    onChange={(e) => setSelectedStyle(e.target.value)}
+                                    className="form-input"
                                 >
-                                    <X className="h-4 w-4 mr-1" />
-                                    Clear Filters
-                                </button>
-                            )}
+                                    <option value="">All Styles</option>
+                                    {styles.map(style => (
+                                        <option key={style} value={style}>{style}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="form-field">
+                                <label className="form-label">Category</label>
+                                <select
+                                    value={selectedCategory}
+                                    onChange={(e) => setSelectedCategory(e.target.value)}
+                                    className="form-input"
+                                >
+                                    <option value="">All Categories</option>
+                                    {categories.map(category => (
+                                        <option key={category} value={category}>{category}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="form-field">
+                                <label className="form-label">Difficulty Level</label>
+                                <select
+                                    value={selectedDifficulty}
+                                    onChange={(e) => setSelectedDifficulty(e.target.value)}
+                                    className="form-input"
+                                >
+                                    <option value="">All Levels</option>
+                                    <option value="1">Beginner (1-3)</option>
+                                    <option value="4">Intermediate (4-6)</option>
+                                    <option value="7">Advanced (7-10)</option>
+                                </select>
+                            </div>
+
+                            <div className="form-field">
+                                <label className="form-label">Sort By</label>
+                                <select
+                                    value={sortBy}
+                                    onChange={(e) => setSortBy(e.target.value)}
+                                    className="form-input"
+                                >
+                                    <option value="name">Name A-Z</option>
+                                    <option value="difficulty">Difficulty Level</option>
+                                    <option value="popular">Most Popular</option>
+                                    <option value="style">Martial Art Style</option>
+                                    <option value="recent">Recently Added</option>
+                                </select>
+                            </div>
                         </div>
 
-                        {/* View mode toggle */}
-                        <div className="flex rounded-lg border border-gray-300">
+                        {/* Active Filters */}
+                        {hasActiveFilters && (
+                            <div className="active-filters">
+                                <span className="filter-label">Active filters:</span>
+                                {searchQuery && (
+                                    <span className="filter-tag">
+                                        Search: "{searchQuery}"
+                                        <button onClick={() => setSearchQuery('')}>
+                                            <X size={14} />
+                                        </button>
+                                    </span>
+                                )}
+                                {selectedStyle && (
+                                    <span className="filter-tag">
+                                        Style: {selectedStyle}
+                                        <button onClick={() => setSelectedStyle('')}>
+                                            <X size={14} />
+                                        </button>
+                                    </span>
+                                )}
+                                {selectedCategory && (
+                                    <span className="filter-tag">
+                                        Category: {selectedCategory}
+                                        <button onClick={() => setSelectedCategory('')}>
+                                            <X size={14} />
+                                        </button>
+                                    </span>
+                                )}
+                                {selectedDifficulty && (
+                                    <span className="filter-tag">
+                                        Difficulty: {selectedDifficulty === '1' ? 'Beginner' : selectedDifficulty === '4' ? 'Intermediate' : 'Advanced'}
+                                        <button onClick={() => setSelectedDifficulty('')}>
+                                            <X size={14} />
+                                        </button>
+                                    </span>
+                                )}
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={clearFilters}
+                                    className="text-error"
+                                >
+                                    Clear All Filters
+                                </Button>
+                            </div>
+                        )}
+                    </form>
+                </div>
+
+                {/* Results Header */}
+                <div className="results-header">
+                    <div className="results-info">
+                        <h2>
+                            {searchQuery ? `Search Results` : 'All Techniques'}
+                        </h2>
+                        <p className="results-count">
+                            {loading ? 'Loading...' : `${techniques.length} techniques found`}
+                            {hasMore && ' (showing first results)'}
+                        </p>
+                    </div>
+
+                    {/* View Toggle */}
+                    <div className="view-controls">
+                        <div className="view-toggle">
                             <button
                                 onClick={() => setViewMode('grid')}
-                                className={`px-3 py-1 text-sm rounded-l-lg transition-colors ${viewMode === 'grid'
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-white text-gray-700 hover:bg-gray-50'
-                                    }`}
+                                className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`}
+                                title="Grid View"
                             >
-                                <Grid className="h-4 w-4" />
+                                <Grid size={18} />
                             </button>
                             <button
                                 onClick={() => setViewMode('list')}
-                                className={`px-3 py-1 text-sm rounded-r-lg transition-colors ${viewMode === 'list'
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-white text-gray-700 hover:bg-gray-50'
-                                    }`}
+                                className={`view-btn ${viewMode === 'list' ? 'active' : ''}`}
+                                title="List View"
                             >
-                                <List className="h-4 w-4" />
+                                <List size={18} />
                             </button>
                         </div>
                     </div>
@@ -399,52 +459,47 @@ const Techniques = () => {
 
                 {/* Error State */}
                 {error && (
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-8">
-                        <div className="flex items-center">
-                            <div className="text-red-800">
-                                <strong>Error:</strong> {error}
-                            </div>
-                            <button
-                                onClick={loadTechniques}
-                                className="ml-auto px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
-                            >
-                                Try Again
-                            </button>
-                        </div>
+                    <div className="error-message">
+                        <span>{error}</span>
+                        <button
+                            onClick={loadTechniques}
+                            className="error-close"
+                        >
+                            <X size={16} />
+                        </button>
                     </div>
                 )}
 
                 {/* Techniques Grid/List */}
                 {techniques.length === 0 && !loading ? (
-                    <div className="text-center py-12">
-                        <BookOpen className="mx-auto h-12 w-12 text-gray-400" />
-                        <h3 className="mt-2 text-lg font-medium text-gray-900">No techniques found</h3>
-                        <p className="mt-1 text-gray-500 mb-6">
-                            {hasActiveFilters
-                                ? 'Try adjusting your search or filters'
-                                : 'The technique library is being built. Import some techniques to get started!'
-                            }
-                        </p>
-                        {hasActiveFilters ? (
-                            <Button onClick={clearFilters}>
-                                Clear Filters
-                            </Button>
-                        ) : user ? (
-                            <Button onClick={handleImportFromBlackBeltWiki} disabled={importing}>
-                                {importing ? 'Importing...' : 'Import Techniques'}
-                            </Button>
-                        ) : (
-                            <Button onClick={() => navigate('/login')}>
-                                Log In to Import Techniques
-                            </Button>
-                        )}
+                    <div className="no-results">
+                        <div className="no-results-content">
+                            <BookOpen className="no-results-icon text-muted" size={64} />
+                            <h3>No techniques found</h3>
+                            <p>
+                                {hasActiveFilters
+                                    ? 'Try adjusting your search criteria or filters to find more techniques.'
+                                    : 'The technique library is growing! Import some techniques to get started.'
+                                }
+                            </p>
+                            {hasActiveFilters ? (
+                                <Button onClick={clearFilters} variant="outline">
+                                    Clear All Filters
+                                </Button>
+                            ) : user ? (
+                                <Button onClick={handleImportFromBlackBeltWiki} disabled={importing}>
+                                    {importing ? 'Importing...' : 'Import Techniques'}
+                                </Button>
+                            ) : (
+                                <Button onClick={() => navigate('/login')}>
+                                    Log In to Import Techniques
+                                </Button>
+                            )}
+                        </div>
                     </div>
                 ) : (
                     <>
-                        <div className={viewMode === 'grid'
-                            ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-                            : "space-y-4"
-                        }>
+                        <div className={viewMode === 'grid' ? 'techniques-grid' : 'techniques-list'}>
                             {techniques.map((technique) => (
                                 <TechniqueCard
                                     key={technique.id}
@@ -459,20 +514,21 @@ const Techniques = () => {
 
                         {/* Load More */}
                         {hasMore && (
-                            <div className="mt-8 text-center">
+                            <div className="load-more-section">
                                 <Button
                                     onClick={() => setCurrentPage(currentPage + 1)}
                                     disabled={loading}
                                     variant="outline"
+                                    size="lg"
                                 >
                                     {loading ? (
                                         <>
-                                            <Loader className="h-4 w-4 mr-2 animate-spin" />
-                                            Loading...
+                                            <Loader className="animate-spin" size={20} />
+                                            Loading more...
                                         </>
                                     ) : (
                                         <>
-                                            <Plus className="h-4 w-4 mr-2" />
+                                            <Plus size={20} />
                                             Load More Techniques
                                         </>
                                     )}
@@ -481,20 +537,41 @@ const Techniques = () => {
                         )}
                     </>
                 )}
+
+                {/* Call to Action */}
+                {!user && techniques.length > 0 && (
+                    <div className="cta-section">
+                        <div className="cta-content">
+                            <h3>Start Your Martial Arts Journey</h3>
+                            <p>
+                                Join DojoTracker to bookmark techniques, track your progress,
+                                and build your personal training library.
+                            </p>
+                            <div className="cta-actions">
+                                <Button onClick={() => navigate('/register')} size="lg">
+                                    Get Started Free
+                                </Button>
+                                <Button onClick={() => navigate('/login')} variant="outline" size="lg">
+                                    Sign In
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
 };
 
-// Individual Technique Card Component
+// Enhanced Technique Card Component
 const TechniqueCard = ({ technique, viewMode, user, onClick, onBookmarkToggle }) => {
     const [bookmarkLoading, setBookmarkLoading] = useState(false);
 
     const getDifficultyColor = (level) => {
-        if (!level) return 'bg-gray-500';
-        if (level <= 3) return 'bg-green-500';
-        if (level <= 6) return 'bg-yellow-500';
-        return 'bg-red-500';
+        if (!level) return 'bg-secondary';
+        if (level <= 3) return 'bg-success';
+        if (level <= 6) return 'bg-warning';
+        return 'bg-error';
     };
 
     const getDifficultyText = (level) => {
@@ -525,65 +602,73 @@ const TechniqueCard = ({ technique, viewMode, user, onClick, onBookmarkToggle })
     if (viewMode === 'list') {
         return (
             <div
-                className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow cursor-pointer"
+                className="technique-card list-view"
                 onClick={onClick}
             >
-                <div className="p-6">
-                    <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                            <div className="flex items-center gap-3">
-                                <h3 className="text-lg font-semibold text-gray-900 hover:text-blue-600">
-                                    {technique.name}
-                                </h3>
-                                <span className={`px-2 py-1 text-xs font-medium text-white rounded-full ${getDifficultyColor(technique.difficulty_level)}`}>
+                <div className="card-content">
+                    <div className="technique-header">
+                        <div className="technique-info">
+                            <h3 className="technique-title">{technique.name}</h3>
+                            <div className="technique-meta">
+                                <span className="technique-style">{technique.style}</span>
+                                {technique.category && (
+                                    <span className="technique-category">{technique.category}</span>
+                                )}
+                                <span className={`difficulty-badge ${getDifficultyColor(technique.difficulty_level)}`}>
                                     {getDifficultyText(technique.difficulty_level)}
                                 </span>
                             </div>
-
-                            <div className="mt-2 flex items-center gap-4 text-sm text-gray-600">
-                                <span className="font-medium text-blue-600">{technique.style}</span>
-                                {technique.category && (
-                                    <span className="text-gray-500">• {technique.category}</span>
-                                )}
-                                <div className="flex items-center gap-1">
-                                    <Eye className="h-4 w-4" />
-                                    <span>{technique.view_count || 0}</span>
-                                </div>
-                            </div>
-
-                            {technique.description && (
-                                <p className="mt-3 text-gray-600 line-clamp-2">
-                                    {technique.description.length > 150
-                                        ? `${technique.description.substring(0, 150)}...`
-                                        : technique.description
-                                    }
-                                </p>
-                            )}
-
-                            {technique.tags && technique.tags.length > 0 && (
-                                <div className="mt-3 flex flex-wrap gap-1">
-                                    {technique.tags.slice(0, 4).map((tag, index) => (
-                                        <span key={index} className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
-                                            #{tag}
-                                        </span>
-                                    ))}
-                                </div>
-                            )}
                         </div>
 
                         {user && (
                             <button
                                 onClick={handleBookmark}
                                 disabled={bookmarkLoading}
-                                className={`ml-4 p-2 rounded-full transition-colors ${technique.is_bookmarked
-                                        ? 'text-yellow-500 hover:text-yellow-600'
-                                        : 'text-gray-400 hover:text-yellow-500'
-                                    } ${bookmarkLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                className={`bookmark-btn ${technique.is_bookmarked ? 'bookmarked' : ''}`}
+                                title={technique.is_bookmarked ? 'Remove bookmark' : 'Add bookmark'}
                             >
-                                <Star className={`h-5 w-5 ${technique.is_bookmarked ? 'fill-current' : ''}`} />
+                                <Star
+                                    size={20}
+                                    className={technique.is_bookmarked ? 'fill-current' : ''}
+                                />
                             </button>
                         )}
                     </div>
+
+                    {technique.description && (
+                        <p className="technique-description">
+                            {technique.description.length > 200
+                                ? `${technique.description.substring(0, 200)}...`
+                                : technique.description
+                            }
+                        </p>
+                    )}
+
+                    <div className="technique-stats">
+                        <div className="stat-item">
+                            <Eye size={16} />
+                            <span>{technique.view_count || 0} views</span>
+                        </div>
+                        <div className="stat-item">
+                            <Star size={16} />
+                            <span>{technique.bookmark_count || 0} bookmarks</span>
+                        </div>
+                    </div>
+
+                    {technique.tags && technique.tags.length > 0 && (
+                        <div className="technique-tags">
+                            {technique.tags.slice(0, 4).map((tag, index) => (
+                                <span key={index} className="tag">
+                                    #{tag}
+                                </span>
+                            ))}
+                            {technique.tags.length > 4 && (
+                                <span className="tag-more">
+                                    +{technique.tags.length - 4} more
+                                </span>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
         );
@@ -592,45 +677,42 @@ const TechniqueCard = ({ technique, viewMode, user, onClick, onBookmarkToggle })
     // Grid view
     return (
         <div
-            className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow cursor-pointer group"
+            className="technique-card grid-view"
             onClick={onClick}
         >
-            <div className="p-6">
-                <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-                            {technique.name}
-                        </h3>
-                        <div className="mt-2 flex items-center justify-between">
-                            <span className="text-sm font-medium text-blue-600">{technique.style}</span>
-                            <span className={`px-2 py-1 text-xs font-medium text-white rounded-full ${getDifficultyColor(technique.difficulty_level)}`}>
-                                {getDifficultyText(technique.difficulty_level)}
-                            </span>
-                        </div>
-                    </div>
-
+            <div className="card-header">
+                <div className="technique-badges">
+                    <span className={`difficulty-badge ${getDifficultyColor(technique.difficulty_level)}`}>
+                        {getDifficultyText(technique.difficulty_level)}
+                    </span>
                     {user && (
                         <button
                             onClick={handleBookmark}
                             disabled={bookmarkLoading}
-                            className={`ml-2 p-1 rounded-full transition-colors ${technique.is_bookmarked
-                                    ? 'text-yellow-500 hover:text-yellow-600'
-                                    : 'text-gray-400 hover:text-yellow-500'
-                                } ${bookmarkLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className={`bookmark-btn ${technique.is_bookmarked ? 'bookmarked' : ''}`}
+                            title={technique.is_bookmarked ? 'Remove bookmark' : 'Add bookmark'}
                         >
-                            <Star className={`h-4 w-4 ${technique.is_bookmarked ? 'fill-current' : ''}`} />
+                            <Star
+                                size={18}
+                                className={technique.is_bookmarked ? 'fill-current' : ''}
+                            />
                         </button>
                     )}
                 </div>
+            </div>
 
-                {technique.category && (
-                    <div className="mt-3 text-sm text-gray-600">
-                        Category: {technique.category}
-                    </div>
-                )}
+            <div className="card-content">
+                <h3 className="technique-title">{technique.name}</h3>
+
+                <div className="technique-meta">
+                    <span className="technique-style">{technique.style}</span>
+                    {technique.category && (
+                        <span className="technique-category">{technique.category}</span>
+                    )}
+                </div>
 
                 {technique.description && (
-                    <p className="mt-3 text-sm text-gray-600 line-clamp-3">
+                    <p className="technique-description">
                         {technique.description.length > 120
                             ? `${technique.description.substring(0, 120)}...`
                             : technique.description
@@ -638,21 +720,27 @@ const TechniqueCard = ({ technique, viewMode, user, onClick, onBookmarkToggle })
                     </p>
                 )}
 
-                <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
-                    <div className="flex items-center gap-1">
-                        <Eye className="h-4 w-4" />
-                        <span>{technique.view_count || 0} views</span>
+                {technique.tags && technique.tags.length > 0 && (
+                    <div className="technique-tags">
+                        {technique.tags.slice(0, 3).map((tag, index) => (
+                            <span key={index} className="tag">
+                                #{tag}
+                            </span>
+                        ))}
                     </div>
+                )}
+            </div>
 
-                    {technique.tags && technique.tags.length > 0 && (
-                        <div className="flex gap-1">
-                            {technique.tags.slice(0, 2).map((tag, index) => (
-                                <span key={index} className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
-                                    #{tag}
-                                </span>
-                            ))}
-                        </div>
-                    )}
+            <div className="card-footer">
+                <div className="technique-stats">
+                    <div className="stat-item">
+                        <Eye size={14} />
+                        <span>{technique.view_count || 0}</span>
+                    </div>
+                    <div className="stat-item">
+                        <Star size={14} />
+                        <span>{technique.bookmark_count || 0}</span>
+                    </div>
                 </div>
             </div>
         </div>
