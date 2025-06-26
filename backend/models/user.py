@@ -1,5 +1,8 @@
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_sqlalchemy import SQLAlchemy
+
+db = SQLAlchemy()
 
 def create_models(db):
     """Create all models with the provided db instance"""

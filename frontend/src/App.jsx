@@ -11,6 +11,9 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Training from './pages/Training';
 import Techniques from './pages/Techniques';
+import TechniqueLibrary from './pages/TechniqueLibrary'; // Add this import
+import TechniqueDetail from './pages/TechniqueDetail'; // Add this import
+import MyTechniques from './pages/MyTechniques'; // Add this import
 import Profile from './pages/Profile';
 
 // Styles
@@ -96,16 +99,37 @@ const AppContent = () => {
               </ProtectedRoute>
             }
           />
+
+          {/* Technique Routes - These can be public */}
           <Route
             path="/techniques"
             element={
+              <Layout>
+                <TechniqueLibrary />
+              </Layout>
+            }
+          />
+          <Route
+            path="/techniques/:id"
+            element={
+              <Layout>
+                <TechniqueDetail />
+              </Layout>
+            }
+          />
+
+          {/* Protected Technique Routes */}
+          <Route
+            path="/my-techniques"
+            element={
               <ProtectedRoute>
                 <Layout>
-                  <Techniques />
+                  <MyTechniques />
                 </Layout>
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/profile"
             element={

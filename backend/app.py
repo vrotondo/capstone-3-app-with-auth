@@ -96,11 +96,11 @@ def create_app():
     # Create models
     from models.user import create_models
     User, TrainingSession, TechniqueProgress = create_models(db)
-    
+
     # Create technique library models
     from models.technique_library import create_technique_models
     TechniqueLibrary, UserTechniqueBookmark, TechniqueCategory = create_technique_models(db)
-    
+
     # Make models available globally in the app
     app.User = User
     app.TrainingSession = TrainingSession

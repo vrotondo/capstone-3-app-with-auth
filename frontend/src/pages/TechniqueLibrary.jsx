@@ -1,15 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Star, BookOpen, Eye, TrendingUp } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Search, Filter, Star, BookOpen, Eye, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import api from '../services/api';
 
 const TechniqueLibrary = () => {
+    const navigate = useNavigate();
+
+    // State management
     const [techniques, setTechniques] = useState([]);
-    const [filteredTechniques, setFilteredTechniques] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    // Search and filters
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedStyle, setSelectedStyle] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('');
     const [selectedDifficulty, setSelectedDifficulty] = useState('');
     const [sortBy, setSortBy] = useState('name');
+
+    // Pagination
+    const [currentPage, setCurrentPage] = useState(1);
+    const [hasMore, setHasMore] = useState(false);
+    const techniquesPerPage = 20;
 
     // Filter options
     const [styles, setStyles] = useState([]);
@@ -20,22 +32,50 @@ const TechniqueLibrary = () => {
     const [viewMode, setViewMode] = useState('grid'); // grid or list
 
     useEffect(() => {
-        loadTechniques();
         loadFilterOptions();
         loadStats();
     }, []);
 
     useEffect(() => {
-        filterTechniques();
-    }, [techniques, searchQuery, selectedStyle, selectedCategory, selectedDifficulty, sortBy]);
+        setCurrentPage(1); // Reset to first page when filters change
+        loadTechniques();
+    }, [searchQuery, selectedStyle, selectedCategory, selectedDifficulty, sortBy]);
+
+    useEffect(() => {
+        loadTechniques();
+    }, [currentPage]);
 
     const loadTechniques = async () => {
         try {
-            const response = await fetch('/api/techniques/search?limit=100');
-            const data = await response.json();
-            setTechniques(data.techniques || []);
+            setLoading(true);
+            setError(null);
+
+            const params = new URLSearchParams();
+
+            if (searchQuery) params.append('q', searchQuery);
+            if (selectedStyle) params.append('style', selectedStyle);
+            if (selectedCategory) params.append('category', selectedCategory);
+            if (selectedDifficulty) params.append('difficulty', selectedDifficulty);
+
+            params.append('limit', techniquesPerPage);
+            params.append('offset', (currentPage - 1) * techniquesPerPage);
+
+            console.log('🔍 Loading techniques with params:', params.toString());
+
+            const response = await api.get(`/techniques/search?${params}`);
+
+            if (response.data && response.data.techniques) {
+                setTechniques(response.data.techniques);
+                setHasMore(response.data.has_more || false);
+            } else {
+                setTechniques([]);
+                setHasMore(false);
+            }
+
         } catch (error) {
             console.error('Error loading techniques:', error);
+            setError('Failed to load techniques. Please try again.');
+            setTechniques([]);
         } finally {
             setLoading(false);
         }
@@ -44,15 +84,12 @@ const TechniqueLibrary = () => {
     const loadFilterOptions = async () => {
         try {
             const [stylesRes, categoriesRes] = await Promise.all([
-                fetch('/api/techniques/styles'),
-                fetch('/api/techniques/categories')
+                api.get('/techniques/styles'),
+                api.get('/techniques/categories')
             ]);
 
-            const stylesData = await stylesRes.json();
-            const categoriesData = await categoriesRes.json();
-
-            setStyles(stylesData.styles || []);
-            setCategories(categoriesData.categories || []);
+            setStyles(stylesRes.data.styles || []);
+            setCategories(categoriesRes.data.categories || []);
         } catch (error) {
             console.error('Error loading filter options:', error);
         }
@@ -60,68 +97,27 @@ const TechniqueLibrary = () => {
 
     const loadStats = async () => {
         try {
-            const response = await fetch('/api/techniques/stats');
-            const data = await response.json();
-            setStats(data.stats || {});
+            const response = await api.get('/techniques/stats');
+            setStats(response.data.stats || {});
         } catch (error) {
             console.error('Error loading stats:', error);
         }
     };
 
-    const filterTechniques = () => {
-        let filtered = [...techniques];
-
-        // Search filter
-        if (searchQuery) {
-            const query = searchQuery.toLowerCase();
-            filtered = filtered.filter(technique =>
-                technique.name.toLowerCase().includes(query) ||
-                technique.description?.toLowerCase().includes(query) ||
-                technique.style?.toLowerCase().includes(query) ||
-                technique.tags?.some(tag => tag.toLowerCase().includes(query))
-            );
-        }
-
-        // Style filter
-        if (selectedStyle) {
-            filtered = filtered.filter(technique =>
-                technique.style?.toLowerCase() === selectedStyle.toLowerCase()
-            );
-        }
-
-        // Category filter
-        if (selectedCategory) {
-            filtered = filtered.filter(technique =>
-                technique.category?.toLowerCase() === selectedCategory.toLowerCase()
-            );
-        }
-
-        // Difficulty filter
-        if (selectedDifficulty) {
-            const difficulty = parseInt(selectedDifficulty);
-            filtered = filtered.filter(technique =>
-                technique.difficulty_level === difficulty
-            );
-        }
-
-        // Sort
-        filtered.sort((a, b) => {
-            switch (sortBy) {
-                case 'name':
-                    return a.name.localeCompare(b.name);
-                case 'difficulty':
-                    return (a.difficulty_level || 5) - (b.difficulty_level || 5);
-                case 'popular':
-                    return (b.view_count || 0) - (a.view_count || 0);
-                case 'style':
-                    return (a.style || '').localeCompare(b.style || '');
-                default:
-                    return 0;
-            }
-        });
-
-        setFilteredTechniques(filtered);
+    const handleSearch = (e) => {
+        e.preventDefault();
+        // Search will be triggered by useEffect when searchQuery changes
     };
+
+    const clearFilters = () => {
+        setSearchQuery('');
+        setSelectedStyle('');
+        setSelectedCategory('');
+        setSelectedDifficulty('');
+        setSortBy('name');
+    };
+
+    const hasActiveFilters = searchQuery || selectedStyle || selectedCategory || selectedDifficulty;
 
     const getDifficultyColor = (level) => {
         if (!level) return 'bg-gray-500';
@@ -137,12 +133,32 @@ const TechniqueLibrary = () => {
         return 'Advanced';
     };
 
-    if (loading) {
+    const handleTechniqueClick = (technique) => {
+        navigate(`/techniques/${technique.id}`);
+    };
+
+    if (loading && techniques.length === 0) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
                     <p className="mt-4 text-gray-600">Loading technique library...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="text-red-500 text-lg font-medium mb-4">{error}</div>
+                    <button
+                        onClick={loadTechniques}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    >
+                        Try Again
+                    </button>
                 </div>
             </div>
         );
@@ -186,7 +202,7 @@ const TechniqueLibrary = () => {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Search and Filters */}
                 <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-                    <div className="flex flex-col lg:flex-row gap-4">
+                    <form onSubmit={handleSearch} className="flex flex-col lg:flex-row gap-4">
                         {/* Search */}
                         <div className="flex-1">
                             <div className="relative">
@@ -247,21 +263,32 @@ const TechniqueLibrary = () => {
                                 <option value="style">Sort by Style</option>
                             </select>
                         </div>
-                    </div>
+                    </form>
 
-                    {/* Results count */}
+                    {/* Active filters and results */}
                     <div className="mt-4 flex items-center justify-between">
-                        <p className="text-sm text-gray-600">
-                            Showing {filteredTechniques.length} of {techniques.length} techniques
-                        </p>
+                        <div className="flex items-center gap-4">
+                            <p className="text-sm text-gray-600">
+                                Showing {techniques.length} techniques
+                            </p>
+
+                            {hasActiveFilters && (
+                                <button
+                                    onClick={clearFilters}
+                                    className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                                >
+                                    Clear Filters
+                                </button>
+                            )}
+                        </div>
 
                         {/* View mode toggle */}
                         <div className="flex rounded-lg border border-gray-300">
                             <button
                                 onClick={() => setViewMode('grid')}
                                 className={`px-3 py-1 text-sm rounded-l-lg ${viewMode === 'grid'
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-white text-gray-700 hover:bg-gray-50'
                                     }`}
                             >
                                 Grid
@@ -269,8 +296,8 @@ const TechniqueLibrary = () => {
                             <button
                                 onClick={() => setViewMode('list')}
                                 className={`px-3 py-1 text-sm rounded-r-lg ${viewMode === 'list'
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-white text-gray-700 hover:bg-gray-50'
                                     }`}
                             >
                                 List
@@ -280,27 +307,70 @@ const TechniqueLibrary = () => {
                 </div>
 
                 {/* Techniques Grid/List */}
-                {filteredTechniques.length === 0 ? (
+                {techniques.length === 0 ? (
                     <div className="text-center py-12">
                         <BookOpen className="mx-auto h-12 w-12 text-gray-400" />
                         <h3 className="mt-2 text-lg font-medium text-gray-900">No techniques found</h3>
-                        <p className="mt-1 text-gray-500">Try adjusting your search or filters</p>
+                        <p className="mt-1 text-gray-500">
+                            {hasActiveFilters
+                                ? 'Try adjusting your search or filters'
+                                : 'The technique library is being built. Check back soon!'
+                            }
+                        </p>
+                        {hasActiveFilters && (
+                            <button
+                                onClick={clearFilters}
+                                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                            >
+                                Clear Filters
+                            </button>
+                        )}
                     </div>
                 ) : (
-                    <div className={viewMode === 'grid'
-                        ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-                        : "space-y-4"
-                    }>
-                        {filteredTechniques.map((technique) => (
-                            <TechniqueCard
-                                key={technique.id}
-                                technique={technique}
-                                viewMode={viewMode}
-                                getDifficultyColor={getDifficultyColor}
-                                getDifficultyText={getDifficultyText}
-                            />
-                        ))}
-                    </div>
+                    <>
+                        <div className={viewMode === 'grid'
+                            ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                            : "space-y-4"
+                        }>
+                            {techniques.map((technique) => (
+                                <TechniqueCard
+                                    key={technique.id}
+                                    technique={technique}
+                                    viewMode={viewMode}
+                                    getDifficultyColor={getDifficultyColor}
+                                    getDifficultyText={getDifficultyText}
+                                    onClick={() => handleTechniqueClick(technique)}
+                                />
+                            ))}
+                        </div>
+
+                        {/* Pagination */}
+                        {(currentPage > 1 || hasMore) && (
+                            <div className="mt-8 flex items-center justify-center gap-4">
+                                <button
+                                    onClick={() => setCurrentPage(currentPage - 1)}
+                                    disabled={currentPage === 1}
+                                    className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <ChevronLeft className="h-4 w-4 mr-1" />
+                                    Previous
+                                </button>
+
+                                <span className="text-sm text-gray-700">
+                                    Page {currentPage}
+                                </span>
+
+                                <button
+                                    onClick={() => setCurrentPage(currentPage + 1)}
+                                    disabled={!hasMore}
+                                    className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Next
+                                    <ChevronRight className="h-4 w-4 ml-1" />
+                                </button>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
         </div>
@@ -308,25 +378,40 @@ const TechniqueLibrary = () => {
 };
 
 // Technique Card Component
-const TechniqueCard = ({ technique, viewMode, getDifficultyColor, getDifficultyText }) => {
+const TechniqueCard = ({ technique, viewMode, getDifficultyColor, getDifficultyText, onClick }) => {
     const [isBookmarked, setIsBookmarked] = useState(false);
+    const [bookmarkLoading, setBookmarkLoading] = useState(false);
 
     const handleBookmark = async (e) => {
         e.stopPropagation();
-        // TODO: Implement bookmarking (requires authentication)
-        setIsBookmarked(!isBookmarked);
-    };
 
-    const handleTechniqueClick = () => {
-        // TODO: Navigate to technique detail page
-        console.log('View technique:', technique.id);
+        try {
+            setBookmarkLoading(true);
+
+            if (isBookmarked) {
+                await api.delete(`/techniques/${technique.id}/bookmark`);
+                setIsBookmarked(false);
+            } else {
+                await api.post(`/techniques/${technique.id}/bookmark`);
+                setIsBookmarked(true);
+            }
+        } catch (error) {
+            console.error('Bookmark error:', error);
+            if (error.response?.status === 401) {
+                alert('Please log in to bookmark techniques');
+            } else {
+                alert('Failed to update bookmark');
+            }
+        } finally {
+            setBookmarkLoading(false);
+        }
     };
 
     if (viewMode === 'list') {
         return (
             <div
                 className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow cursor-pointer"
-                onClick={handleTechniqueClick}
+                onClick={onClick}
             >
                 <div className="p-6">
                     <div className="flex items-start justify-between">
@@ -370,10 +455,11 @@ const TechniqueCard = ({ technique, viewMode, getDifficultyColor, getDifficultyT
 
                         <button
                             onClick={handleBookmark}
+                            disabled={bookmarkLoading}
                             className={`ml-4 p-2 rounded-full transition-colors ${isBookmarked
                                     ? 'text-yellow-500 hover:text-yellow-600'
                                     : 'text-gray-400 hover:text-yellow-500'
-                                }`}
+                                } ${bookmarkLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                             <Star className={`h-5 w-5 ${isBookmarked ? 'fill-current' : ''}`} />
                         </button>
@@ -387,7 +473,7 @@ const TechniqueCard = ({ technique, viewMode, getDifficultyColor, getDifficultyT
     return (
         <div
             className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow cursor-pointer group"
-            onClick={handleTechniqueClick}
+            onClick={onClick}
         >
             <div className="p-6">
                 <div className="flex items-start justify-between">
@@ -405,10 +491,11 @@ const TechniqueCard = ({ technique, viewMode, getDifficultyColor, getDifficultyT
 
                     <button
                         onClick={handleBookmark}
+                        disabled={bookmarkLoading}
                         className={`ml-2 p-1 rounded-full transition-colors ${isBookmarked
                                 ? 'text-yellow-500 hover:text-yellow-600'
                                 : 'text-gray-400 hover:text-yellow-500'
-                            }`}
+                            } ${bookmarkLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                         <Star className={`h-4 w-4 ${isBookmarked ? 'fill-current' : ''}`} />
                     </button>

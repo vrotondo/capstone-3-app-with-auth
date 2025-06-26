@@ -2,13 +2,17 @@ from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 import logging
+from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
 
 techniques_bp = Blueprint('techniques', __name__)
 
 def get_current_user_id():
     """Get current user ID from JWT token and convert from string to int"""
-    current_user_id_str = get_jwt_identity()
-    return int(current_user_id_str) if current_user_id_str else None
+    try:
+        current_user_id_str = get_jwt_identity()
+        return int(current_user_id_str) if current_user_id_str else None
+    except:
+        return None
 
 def get_technique_service():
     """Get technique service instance using pre-created models from app"""
@@ -42,6 +46,14 @@ def search_techniques():
         
         print(f"🔍 Searching techniques: q='{query}', style='{style}', category='{category}'")
         
+        # Check if user is authenticated (optional for search)
+        user_id = None
+        try:
+            verify_jwt_in_request(optional=True)
+            user_id = get_current_user_id()
+        except:
+            pass  # Not authenticated, continue without user data
+        
         service = get_technique_service()
         result = service.search_techniques(
             query=query if query else None,
@@ -60,7 +72,7 @@ def search_techniques():
         import traceback
         traceback.print_exc()
         return jsonify({'message': 'Failed to search techniques', 'error': str(e)}), 500
-
+    
 @techniques_bp.route('/<int:technique_id>', methods=['GET'])
 def get_technique_detail(technique_id):
     """Get detailed information about a specific technique"""
