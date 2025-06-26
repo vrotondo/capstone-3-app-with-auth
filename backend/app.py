@@ -1,6 +1,6 @@
 import os
 import sys
-from flask import Flask, jsonify, request  # Added request import
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
@@ -39,7 +39,7 @@ def create_app():
     @app.before_request
     def debug_jwt_token():
         """Debug JWT token in requests"""
-        if request.endpoint and 'training' in str(request.endpoint):
+        if request.endpoint and ('training' in str(request.endpoint) or 'techniques' in str(request.endpoint)):
             print(f"\n🔍 JWT Debug for {request.method} {request.path}")
             print(f"Endpoint: {request.endpoint}")
             
@@ -97,17 +97,26 @@ def create_app():
     from models.user import create_models
     User, TrainingSession, TechniqueProgress = create_models(db)
     
+    # Create technique library models
+    from models.technique_library import create_technique_models
+    TechniqueLibrary, UserTechniqueBookmark, TechniqueCategory = create_technique_models(db)
+    
     # Make models available globally in the app
     app.User = User
     app.TrainingSession = TrainingSession
     app.TechniqueProgress = TechniqueProgress
+    app.TechniqueLibrary = TechniqueLibrary
+    app.UserTechniqueBookmark = UserTechniqueBookmark
+    app.TechniqueCategory = TechniqueCategory
 
     # Register blueprints
     from routes.auth import auth_bp
     from routes.training import training_bp
+    from routes.techniques import techniques_bp
     
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(training_bp, url_prefix='/api/training')
+    app.register_blueprint(techniques_bp, url_prefix='/api/techniques')
 
     # Basic routes
     @app.route('/')
@@ -115,7 +124,8 @@ def create_app():
         return jsonify({
             'message': 'DojoTracker API is running!',
             'version': '1.0.0',
-            'status': 'healthy'
+            'status': 'healthy',
+            'features': ['Training Sessions', 'Technique Library', 'User Authentication']
         })
 
     @app.route('/api/health')
@@ -158,14 +168,21 @@ if __name__ == '__main__':
             db.create_all()
             print("✅ Database tables created successfully")
             
-            # Check if we have any existing users
+            # Check if we have any existing data
             from models.user import create_models
             User, TrainingSession, TechniqueProgress = create_models(db)
+            
+            from models.technique_library import create_technique_models
+            TechniqueLibrary, UserTechniqueBookmark, TechniqueCategory = create_technique_models(db)
+            
             user_count = User.query.count()
             session_count = TrainingSession.query.count()
+            technique_count = TechniqueLibrary.query.count()
+            
             print(f"📊 Current database state:")
             print(f"   Users: {user_count}")
             print(f"   Training Sessions: {session_count}")
+            print(f"   Techniques: {technique_count}")
             
         except Exception as e:
             print(f"❌ Database error: {str(e)}")
@@ -174,6 +191,7 @@ if __name__ == '__main__':
     print("📍 Access at: http://localhost:8000")
     print("🔗 Frontend should use: http://localhost:8000/api")
     print("🧪 Test auth at: http://localhost:8000/api/auth/test")
+    print("🥋 Test techniques at: http://localhost:8000/api/techniques/test")
     print("🔍 JWT debug at: http://localhost:8000/api/debug/jwt")
     print("=" * 50)
     
