@@ -10,10 +10,10 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Training from './pages/Training';
-import Techniques from './pages/Techniques';
-import TechniqueLibrary from './pages/TechniqueLibrary'; // Add this import
-import TechniqueDetail from './pages/TechniqueDetail'; // Add this import
-import MyTechniques from './pages/MyTechniques'; // Add this import
+import Techniques from './pages/Techniques'; // Updated to use the main Techniques page
+import TechniqueLibrary from './pages/TechniqueLibrary';
+import TechniqueDetail from './pages/TechniqueDetail';
+import MyTechniques from './pages/MyTechniques';
 import Profile from './pages/Profile';
 
 // Styles
@@ -100,15 +100,28 @@ const AppContent = () => {
             }
           />
 
-          {/* Technique Routes - These can be public */}
+          {/* Technique Routes */}
+          {/* Main techniques page - can be public but shows more features when logged in */}
           <Route
             path="/techniques"
+            element={
+              <Layout>
+                <Techniques />
+              </Layout>
+            }
+          />
+
+          {/* Alternative technique library route (for backward compatibility) */}
+          <Route
+            path="/technique-library"
             element={
               <Layout>
                 <TechniqueLibrary />
               </Layout>
             }
           />
+
+          {/* Individual technique detail pages - public */}
           <Route
             path="/techniques/:id"
             element={
