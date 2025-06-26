@@ -1,4 +1,6 @@
 /* Import all component and page styles */
+@import './styles/variables.css';
+@import './styles/global.css';
 @import './styles/components/layout.css';
 @import './styles/components/buttons.css';
 @import './styles/components/forms.css';

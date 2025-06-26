@@ -5,7 +5,10 @@ import {
     BookOpen, Star, Target, Dumbbell
 } from 'lucide-react';
 
-const Navigation = ({ user, onLogout }) => {
+import { useAuth } from '../context/AuthContext';
+
+const Navigation = () => {
+    const { user, logout } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
     const location = useLocation();
     const navigate = useNavigate();
@@ -91,8 +94,8 @@ const Navigation = ({ user, onLogout }) => {
                                 key={item.name}
                                 to={item.href}
                                 className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive(item.href)
-                                        ? 'text-blue-600 bg-blue-50 border-b-2 border-blue-600'
-                                        : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                                    ? 'text-blue-600 bg-blue-50 border-b-2 border-blue-600'
+                                    : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
                                     }`}
                             >
                                 <item.icon className="h-4 w-4" />
@@ -111,8 +114,8 @@ const Navigation = ({ user, onLogout }) => {
                                         key={item.name}
                                         to={item.href}
                                         className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive(item.href)
-                                                ? 'text-blue-600 bg-blue-50'
-                                                : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                                            ? 'text-blue-600 bg-blue-50'
+                                            : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
                                             }`}
                                     >
                                         <item.icon className="h-4 w-4" />
@@ -185,8 +188,8 @@ const Navigation = ({ user, onLogout }) => {
                                     to={item.href}
                                     onClick={closeMenu}
                                     className={`flex items-center space-x-3 px-3 py-3 rounded-md text-base font-medium transition-colors ${isActive(item.href)
-                                            ? 'text-blue-600 bg-blue-50 border-l-4 border-blue-600'
-                                            : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                                        ? 'text-blue-600 bg-blue-50 border-l-4 border-blue-600'
+                                        : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
                                         }`}
                                 >
                                     <item.icon className="h-5 w-5" />
@@ -211,8 +214,8 @@ const Navigation = ({ user, onLogout }) => {
                                             to={item.href}
                                             onClick={closeMenu}
                                             className={`flex items-center space-x-3 px-3 py-3 rounded-md text-base font-medium transition-colors ${isActive(item.href)
-                                                    ? 'text-blue-600 bg-blue-50 border-l-4 border-blue-600'
-                                                    : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                                                ? 'text-blue-600 bg-blue-50 border-l-4 border-blue-600'
+                                                : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
                                                 }`}
                                         >
                                             <item.icon className="h-5 w-5" />

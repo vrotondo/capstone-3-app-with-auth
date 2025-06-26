@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import Button from '../components/common/Button';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import trainingService from '../services/trainingService';
+import "../styles/pages/dashboard.css";
 
 const Dashboard = () => {
     const { user } = useAuth();
