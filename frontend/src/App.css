@@ -377,3 +377,122 @@ button {
     page-break-inside: avoid;
   }
 }
+
+.dashboard-card {
+  overflow: visible !important;
+  padding: 1rem !important;
+  min-height: 150px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+}
+
+/* Responsive text sizing using clamp() */
+.dashboard-card h3,
+.dashboard-card .card-title {
+  font-size: clamp(1rem, 2.5vw, 1.5rem) !important;
+  line-height: 1.3 !important;
+  margin-bottom: 0.75rem !important;
+  font-weight: 600 !important;
+  text-align: center !important;
+}
+
+/* Stats numbers - responsive sizing */
+.dashboard-card .stat-number,
+.dashboard-card .stat-value {
+  font-size: clamp(1.5rem, 5vw, 3rem) !important;
+  font-weight: 700 !important;
+  line-height: 1.1 !important;
+  margin-bottom: 0.25rem !important;
+  display: block !important;
+  text-align: center !important;
+}
+
+/* Stats labels - responsive sizing */
+.dashboard-card .stat-label {
+  font-size: clamp(0.75rem, 1.5vw, 1rem) !important;
+  line-height: 1.2 !important;
+  text-align: center !important;
+  color: var(--text-secondary) !important;
+}
+
+/* Training overview specific adjustments */
+.training-overview {
+  padding: 1rem !important;
+  text-align: center !important;
+}
+
+.training-overview .stat-item {
+  margin-bottom: 0.75rem !important;
+}
+
+.training-overview .stat-item:last-child {
+  margin-bottom: 0 !important;
+}
+
+/* Make sure text scales down for smaller cards */
+.dashboard-grid {
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)) !important;
+}
+
+/* Extra responsive adjustments for very small screens */
+@media (max-width: 768px) {
+
+  .dashboard-card h3,
+  .dashboard-card .card-title {
+    font-size: clamp(0.875rem, 3vw, 1.25rem) !important;
+  }
+
+  .dashboard-card .stat-number,
+  .dashboard-card .stat-value {
+    font-size: clamp(1.25rem, 6vw, 2.5rem) !important;
+  }
+
+  .dashboard-card .stat-label {
+    font-size: clamp(0.75rem, 2vw, 0.875rem) !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-card {
+    min-height: 120px !important;
+    padding: 0.75rem !important;
+  }
+
+  .dashboard-card h3,
+  .dashboard-card .card-title {
+    font-size: clamp(0.75rem, 4vw, 1rem) !important;
+    margin-bottom: 0.5rem !important;
+  }
+
+  .dashboard-card .stat-number,
+  .dashboard-card .stat-value {
+    font-size: clamp(1rem, 8vw, 2rem) !important;
+  }
+}
+
+/* Specific fix for session/hour display */
+.dashboard-card .session-count,
+.dashboard-card .hour-count,
+.dashboard-card .total-sessions,
+.dashboard-card .total-hours {
+  font-size: clamp(1.25rem, 4vw, 2.25rem) !important;
+  font-weight: 600 !important;
+  color: var(--primary-color) !important;
+}
+
+/* Button text sizing */
+.dashboard-card .btn,
+.dashboard-card button {
+  font-size: clamp(0.75rem, 1.5vw, 0.875rem) !important;
+  padding: 0.5rem 1rem !important;
+  white-space: nowrap !important;
+}
+
+/* If button text is still too long, allow wrapping */
+.dashboard-card .btn.long-text,
+.dashboard-card button.long-text {
+  white-space: normal !important;
+  line-height: 1.2 !important;
+  min-height: 2.5rem !important;
+}

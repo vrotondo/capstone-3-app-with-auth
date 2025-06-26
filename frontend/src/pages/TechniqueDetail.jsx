@@ -133,10 +133,10 @@ const TechniqueDetail = () => {
     };
 
     const getDifficultyColor = (level) => {
-        if (!level) return 'bg-gray-500';
-        if (level <= 3) return 'bg-green-500';
-        if (level <= 6) return 'bg-yellow-500';
-        return 'bg-red-500';
+        if (!level) return 'difficulty-unknown';
+        if (level <= 3) return 'difficulty-beginner';
+        if (level <= 6) return 'difficulty-intermediate';
+        return 'difficulty-advanced';
     };
 
     const getDifficultyText = (level) => {
@@ -154,18 +154,18 @@ const TechniqueDetail = () => {
     };
 
     const getMasteryColor = (level) => {
-        if (level <= 2) return 'text-red-600';
-        if (level <= 4) return 'text-yellow-600';
-        if (level <= 7) return 'text-blue-600';
-        return 'text-green-600';
+        if (level <= 2) return 'mastery-learning';
+        if (level <= 4) return 'mastery-practicing';
+        if (level <= 7) return 'mastery-improving';
+        return 'mastery-mastered';
     };
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                    <p className="mt-4 text-gray-600">Loading technique...</p>
+            <div className="technique-detail-page">
+                <div className="loading-container">
+                    <div className="spinner spinner-md"></div>
+                    <p>Loading technique details...</p>
                 </div>
             </div>
         );
@@ -173,12 +173,14 @@ const TechniqueDetail = () => {
 
     if (error) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="text-center">
-                    <div className="text-red-500 text-lg font-medium">{error}</div>
+            <div className="technique-detail-page">
+                <div className="techniques-empty-state">
+                    <div className="empty-icon">⚠️</div>
+                    <h3 className="empty-title">Technique Not Found</h3>
+                    <p className="empty-subtitle">{error}</p>
                     <button
                         onClick={() => navigate('/techniques')}
-                        className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                        className="get-started-btn"
                     >
                         Back to Library
                     </button>
@@ -188,388 +190,328 @@ const TechniqueDetail = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <div className="bg-white shadow-sm border-b">
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-                    <div className="flex items-center justify-between">
-                        <button
-                            onClick={() => navigate('/techniques')}
-                            className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
-                        >
-                            <ArrowLeft className="h-5 w-5 mr-2" />
-                            Back to Library
-                        </button>
+        <div className="technique-detail-page">
+            {/* Enhanced Header */}
+            <div className="technique-detail-header">
+                <h1 className="technique-title">{technique.name}</h1>
 
-                        {isAuthenticated && (
-                            <button
-                                onClick={handleBookmark}
-                                className={`flex items-center px-4 py-2 rounded-lg transition-colors ${isBookmarked
-                                        ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
-                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                    }`}
-                            >
-                                <Star className={`h-5 w-5 mr-2 ${isBookmarked ? 'fill-current' : ''}`} />
-                                {isBookmarked ? 'Bookmarked' : 'Bookmark'}
-                            </button>
-                        )}
-                    </div>
+                <div className="technique-meta">
+                    <span className="meta-badge style-badge">{technique.style}</span>
+                    {technique.difficulty_level && (
+                        <span className={`meta-badge difficulty-badge ${getDifficultyColor(technique.difficulty_level)}`}>
+                            {getDifficultyText(technique.difficulty_level)} ({technique.difficulty_level}/10)
+                        </span>
+                    )}
+                    {technique.category && (
+                        <span className="meta-badge category-badge">{technique.category}</span>
+                    )}
+                    {technique.belt_level && (
+                        <span className="meta-badge source-badge">{technique.belt_level}</span>
+                    )}
+                    <span className="meta-badge source-badge">{technique.source_site || 'BlackBeltWiki'}</span>
                 </div>
-            </div>
 
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* Technique Header */}
-                <div className="bg-white rounded-lg shadow-sm p-8 mb-8">
-                    <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                            <h1 className="text-3xl font-bold text-gray-900 mb-4">
-                                {technique.name}
-                            </h1>
-
-                            <div className="flex flex-wrap items-center gap-4 mb-6">
-                                <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                                    {technique.style}
-                                </span>
-
-                                {technique.category && (
-                                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">
-                                        {technique.category}
-                                    </span>
-                                )}
-
-                                <span className={`px-3 py-1 text-white rounded-full text-sm font-medium ${getDifficultyColor(technique.difficulty_level)}`}>
-                                    {getDifficultyText(technique.difficulty_level)}
-                                    {technique.difficulty_level && ` (${technique.difficulty_level}/10)`}
-                                </span>
-
-                                {technique.belt_level && (
-                                    <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">
-                                        {technique.belt_level}
-                                    </span>
-                                )}
-                            </div>
-
-                            <div className="flex items-center gap-6 text-sm text-gray-600">
-                                <div className="flex items-center gap-1">
-                                    <Eye className="h-4 w-4" />
-                                    <span>{technique.view_count || 0} views</span>
-                                </div>
-
-                                <div className="flex items-center gap-1">
-                                    <Star className="h-4 w-4" />
-                                    <span>{technique.bookmark_count || 0} bookmarks</span>
-                                </div>
-
-                                {technique.last_updated && (
-                                    <div className="flex items-center gap-1">
-                                        <Clock className="h-4 w-4" />
-                                        <span>Updated {new Date(technique.last_updated).toLocaleDateString()}</span>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
+                {/* Stats Row */}
+                <div className="technique-stats-row">
+                    <div className="stat-item">
+                        <Eye size={16} />
+                        <span>{technique.view_count || 0} views</span>
                     </div>
-
-                    {/* Tags */}
-                    {technique.tags && technique.tags.length > 0 && (
-                        <div className="mt-6 flex flex-wrap gap-2">
-                            {technique.tags.map((tag, index) => (
-                                <span key={index} className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-sm">
-                                    #{tag}
-                                </span>
-                            ))}
+                    <div className="stat-item">
+                        <Star size={16} />
+                        <span>{technique.bookmark_count || 0} bookmarks</span>
+                    </div>
+                    {technique.last_updated && (
+                        <div className="stat-item">
+                            <Clock size={16} />
+                            <span>Updated {new Date(technique.last_updated).toLocaleDateString()}</span>
                         </div>
                     )}
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Main Content */}
-                    <div className="lg:col-span-2 space-y-8">
-                        {/* Description */}
-                        {technique.description && (
-                            <div className="bg-white rounded-lg shadow-sm p-6">
-                                <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                                    <BookOpen className="h-5 w-5 mr-2 text-blue-600" />
-                                    Description
-                                </h2>
-                                <div className="prose prose-sm max-w-none text-gray-700">
-                                    {technique.description.split('\n').map((paragraph, index) => (
-                                        <p key={index} className="mb-3">{paragraph}</p>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Instructions */}
-                        {technique.instructions && (
-                            <div className="bg-white rounded-lg shadow-sm p-6">
-                                <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                                    <List className="h-5 w-5 mr-2 text-green-600" />
-                                    Instructions
-                                </h2>
-                                <div className="prose prose-sm max-w-none text-gray-700">
-                                    {technique.instructions.split('\n').map((instruction, index) => (
-                                        <p key={index} className="mb-3">{instruction}</p>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Tips */}
-                        {technique.tips && (
-                            <div className="bg-white rounded-lg shadow-sm p-6">
-                                <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                                    <Lightbulb className="h-5 w-5 mr-2 text-yellow-600" />
-                                    Tips & Reminders
-                                </h2>
-                                <div className="prose prose-sm max-w-none text-gray-700">
-                                    {technique.tips.split('\n').map((tip, index) => (
-                                        <p key={index} className="mb-3">{tip}</p>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Variations */}
-                        {technique.variations && (
-                            <div className="bg-white rounded-lg shadow-sm p-6">
-                                <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                                    <Target className="h-5 w-5 mr-2 text-purple-600" />
-                                    Variations
-                                </h2>
-                                <div className="prose prose-sm max-w-none text-gray-700">
-                                    {technique.variations.split('\n').map((variation, index) => (
-                                        <p key={index} className="mb-2">{variation}</p>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
+                {/* Tags */}
+                {technique.tags && technique.tags.length > 0 && (
+                    <div className="tags-container">
+                        {technique.tags.map((tag, index) => (
+                            <span key={index} className="tag">
+                                #{tag}
+                            </span>
+                        ))}
                     </div>
+                )}
 
-                    {/* Sidebar */}
-                    <div className="space-y-6">
-                        {/* Quick Info */}
-                        <div className="bg-white rounded-lg shadow-sm p-6">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Info</h3>
-                            <div className="space-y-3">
-                                <div>
-                                    <span className="text-sm font-medium text-gray-500">Martial Art:</span>
-                                    <div className="text-sm text-gray-900">{technique.style}</div>
-                                </div>
+                <div className="technique-actions">
+                    <button onClick={() => navigate('/techniques')} className="action-btn back-btn">
+                        <ArrowLeft size={20} />
+                        Back to Library
+                    </button>
 
-                                {technique.category && (
-                                    <div>
-                                        <span className="text-sm font-medium text-gray-500">Category:</span>
-                                        <div className="text-sm text-gray-900">{technique.category}</div>
-                                    </div>
-                                )}
+                    {isAuthenticated && (
+                        <button
+                            onClick={handleBookmark}
+                            className={`action-btn bookmark-btn ${isBookmarked ? 'bookmarked' : ''}`}
+                        >
+                            <Star size={20} fill={isBookmarked ? 'currentColor' : 'none'} />
+                            {isBookmarked ? 'Bookmarked' : 'Bookmark'}
+                        </button>
+                    )}
+                </div>
+            </div>
 
-                                <div>
-                                    <span className="text-sm font-medium text-gray-500">Difficulty:</span>
-                                    <div className="text-sm text-gray-900">
-                                        {getDifficultyText(technique.difficulty_level)}
-                                        {technique.difficulty_level && ` (${technique.difficulty_level}/10)`}
-                                    </div>
-                                </div>
-
-                                {technique.belt_level && (
-                                    <div>
-                                        <span className="text-sm font-medium text-gray-500">Belt Level:</span>
-                                        <div className="text-sm text-gray-900">{technique.belt_level}</div>
-                                    </div>
-                                )}
-
-                                <div>
-                                    <span className="text-sm font-medium text-gray-500">Source:</span>
-                                    <div className="text-sm text-gray-900">{technique.source_site}</div>
-                                </div>
+            {/* Main Content */}
+            <div className="technique-content">
+                {/* Left Column - Main Content */}
+                <div className="content-main">
+                    {/* Description */}
+                    {technique.description && (
+                        <div className="content-section">
+                            <h2 className="section-title description">Description</h2>
+                            <div className="content-text">
+                                {technique.description.split('\n').map((paragraph, index) => (
+                                    <p key={index}>{paragraph}</p>
+                                ))}
                             </div>
                         </div>
+                    )}
 
-                        {/* User Progress (if bookmarked) */}
-                        {isAuthenticated && isBookmarked && (
-                            <div className="bg-white rounded-lg shadow-sm p-6">
-                                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                                    <Award className="h-5 w-5 mr-2 text-blue-600" />
-                                    Your Progress
-                                </h3>
+                    {/* Instructions */}
+                    {technique.instructions && (
+                        <div className="content-section">
+                            <h2 className="section-title execution">Instructions</h2>
+                            <div className="content-text">
+                                {technique.instructions.split('\n').map((instruction, index) => (
+                                    <p key={index}>{instruction}</p>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
-                                <div className="space-y-4">
-                                    {/* Mastery Level */}
-                                    <div>
-                                        <label className="text-sm font-medium text-gray-500 block mb-2">
-                                            Mastery Level: {masteryLevel}/10
-                                        </label>
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <span className={`text-sm font-medium ${getMasteryColor(masteryLevel)}`}>
-                                                {getMasteryText(masteryLevel)}
-                                            </span>
-                                        </div>
-                                        <input
-                                            type="range"
-                                            min="1"
-                                            max="10"
-                                            value={masteryLevel}
-                                            onChange={(e) => setMasteryLevel(parseInt(e.target.value))}
-                                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-                                        />
-                                        <div className="flex justify-between text-xs text-gray-500 mt-1">
-                                            <span>Learning</span>
-                                            <span>Mastered</span>
-                                        </div>
+                    {/* Tips */}
+                    {technique.tips && (
+                        <div className="content-section">
+                            <h2 className="section-title common-mistakes">Tips & Reminders</h2>
+                            <div className="content-text">
+                                {technique.tips.split('\n').map((tip, index) => (
+                                    <p key={index}>{tip}</p>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Variations */}
+                    {technique.variations && (
+                        <div className="content-section">
+                            <h2 className="section-title variations">Variations</h2>
+                            <div className="content-text">
+                                {technique.variations.split('\n').map((variation, index) => (
+                                    <p key={index}>{variation}</p>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Media Placeholder */}
+                    <div className="media-section">
+                        <div className="media-placeholder">
+                            <div className="media-icon">🎥</div>
+                            <p className="media-text">
+                                Instructional videos and demonstrations coming soon
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Right Column - Sidebar */}
+                <div className="content-sidebar">
+                    {/* Quick Info Card */}
+                    <div className="sidebar-card">
+                        <h3 className="sidebar-title stats">Quick Info</h3>
+                        <div className="quick-info-grid">
+                            <div className="info-item">
+                                <span className="info-label">Martial Art:</span>
+                                <span className="info-value">{technique.style}</span>
+                            </div>
+                            {technique.category && (
+                                <div className="info-item">
+                                    <span className="info-label">Category:</span>
+                                    <span className="info-value">{technique.category}</span>
+                                </div>
+                            )}
+                            <div className="info-item">
+                                <span className="info-label">Difficulty:</span>
+                                <span className="info-value">
+                                    {getDifficultyText(technique.difficulty_level)}
+                                    {technique.difficulty_level && ` (${technique.difficulty_level}/10)`}
+                                </span>
+                            </div>
+                            {technique.belt_level && (
+                                <div className="info-item">
+                                    <span className="info-label">Belt Level:</span>
+                                    <span className="info-value">{technique.belt_level}</span>
+                                </div>
+                            )}
+                            <div className="info-item">
+                                <span className="info-label">Source:</span>
+                                <span className="info-value">{technique.source_site || 'BlackBeltWiki'}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* User Progress Card */}
+                    {isAuthenticated && isBookmarked && (
+                        <div className="sidebar-card">
+                            <h3 className="sidebar-title progress">Your Progress</h3>
+                            <div className="progress-tracking">
+                                <div className="progress-level">
+                                    Level {masteryLevel}/10
+                                </div>
+                                <div className={`progress-status ${getMasteryColor(masteryLevel)}`}>
+                                    {getMasteryText(masteryLevel)}
+                                </div>
+                                <div className="progress-bar">
+                                    <div
+                                        className="progress-fill"
+                                        style={{ width: `${(masteryLevel / 10) * 100}%` }}
+                                    ></div>
+                                </div>
+
+                                {/* Mastery Level Slider */}
+                                <div className="mastery-slider">
+                                    <label className="slider-label">
+                                        Update Level: {masteryLevel}/10
+                                    </label>
+                                    <input
+                                        type="range"
+                                        min="1"
+                                        max="10"
+                                        value={masteryLevel}
+                                        onChange={(e) => setMasteryLevel(parseInt(e.target.value))}
+                                        className="progress-slider"
+                                    />
+                                    <div className="slider-labels">
+                                        <span>Learning</span>
+                                        <span>Mastered</span>
                                     </div>
+                                </div>
 
-                                    {/* Personal Notes */}
-                                    <div>
-                                        <div className="flex items-center justify-between mb-2">
-                                            <label className="text-sm font-medium text-gray-500">
-                                                Personal Notes
-                                            </label>
-                                            {!isEditingNotes ? (
-                                                <button
-                                                    onClick={() => setIsEditingNotes(true)}
-                                                    className="text-blue-600 hover:text-blue-700 text-sm flex items-center"
-                                                >
-                                                    <Edit3 className="h-4 w-4 mr-1" />
-                                                    Edit
-                                                </button>
-                                            ) : (
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        onClick={updateProgress}
-                                                        disabled={isSaving}
-                                                        className="text-green-600 hover:text-green-700 text-sm flex items-center"
-                                                    >
-                                                        <Save className="h-4 w-4 mr-1" />
-                                                        {isSaving ? 'Saving...' : 'Save'}
-                                                    </button>
-                                                    <button
-                                                        onClick={() => {
-                                                            setIsEditingNotes(false);
-                                                            setPersonalNotes(userBookmark?.personal_notes || '');
-                                                        }}
-                                                        className="text-gray-600 hover:text-gray-700 text-sm flex items-center"
-                                                    >
-                                                        <X className="h-4 w-4 mr-1" />
-                                                        Cancel
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {isEditingNotes ? (
-                                            <textarea
-                                                value={personalNotes}
-                                                onChange={(e) => setPersonalNotes(e.target.value)}
-                                                placeholder="Add your notes, tips, or observations..."
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                                                rows="4"
-                                            />
+                                {/* Personal Notes */}
+                                <div className="notes-section">
+                                    <div className="notes-header">
+                                        <label className="notes-label">Personal Notes</label>
+                                        {!isEditingNotes ? (
+                                            <button
+                                                onClick={() => setIsEditingNotes(true)}
+                                                className="edit-notes-btn"
+                                            >
+                                                <Edit3 size={14} />
+                                                Edit
+                                            </button>
                                         ) : (
-                                            <div className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3 min-h-[80px]">
-                                                {personalNotes || (
-                                                    <span className="text-gray-500 italic">
-                                                        No notes yet. Click edit to add your thoughts!
-                                                    </span>
-                                                )}
+                                            <div className="notes-actions">
+                                                <button
+                                                    onClick={updateProgress}
+                                                    disabled={isSaving}
+                                                    className="save-notes-btn"
+                                                >
+                                                    <Save size={14} />
+                                                    {isSaving ? 'Saving...' : 'Save'}
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setIsEditingNotes(false);
+                                                        setPersonalNotes(userBookmark?.personal_notes || '');
+                                                    }}
+                                                    className="cancel-notes-btn"
+                                                >
+                                                    <X size={14} />
+                                                    Cancel
+                                                </button>
                                             </div>
                                         )}
                                     </div>
 
-                                    {/* Practice Stats */}
-                                    {userBookmark && (
-                                        <div className="pt-4 border-t border-gray-200">
-                                            <div className="grid grid-cols-2 gap-4 text-center">
-                                                <div>
-                                                    <div className="text-lg font-semibold text-blue-600">
-                                                        {userBookmark.practice_count || 0}
-                                                    </div>
-                                                    <div className="text-xs text-gray-500">Practice Sessions</div>
-                                                </div>
-                                                <div>
-                                                    <div className="text-lg font-semibold text-green-600">
-                                                        {userBookmark.last_practiced
-                                                            ? new Date(userBookmark.last_practiced).toLocaleDateString()
-                                                            : 'Never'
-                                                        }
-                                                    </div>
-                                                    <div className="text-xs text-gray-500">Last Practiced</div>
-                                                </div>
-                                            </div>
+                                    {isEditingNotes ? (
+                                        <textarea
+                                            value={personalNotes}
+                                            onChange={(e) => setPersonalNotes(e.target.value)}
+                                            placeholder="Add your notes, tips, or observations..."
+                                            className="notes-textarea"
+                                            rows="4"
+                                        />
+                                    ) : (
+                                        <div className="notes-display">
+                                            {personalNotes || (
+                                                <span className="notes-placeholder">
+                                                    No notes yet. Click edit to add your thoughts!
+                                                </span>
+                                            )}
                                         </div>
                                     )}
-
-                                    {/* Quick Action Button */}
-                                    <button
-                                        onClick={updateProgress}
-                                        disabled={isSaving}
-                                        className="w-full mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center"
-                                    >
-                                        <Plus className="h-4 w-4 mr-2" />
-                                        {isSaving ? 'Updating...' : 'Mark as Practiced'}
-                                    </button>
                                 </div>
-                            </div>
-                        )}
 
-                        {/* Authentication prompt */}
-                        {!isAuthenticated && (
-                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                                <h3 className="text-lg font-medium text-blue-900 mb-2">
-                                    Track Your Progress
-                                </h3>
-                                <p className="text-sm text-blue-700 mb-4">
-                                    Log in to bookmark techniques, track your progress, and add personal notes.
-                                </p>
+                                {/* Practice Stats */}
+                                {userBookmark && (
+                                    <div className="practice-stats">
+                                        <div className="practice-stat">
+                                            <div className="stat-value">{userBookmark.practice_count || 0}</div>
+                                            <div className="stat-label">Practice Sessions</div>
+                                        </div>
+                                        <div className="practice-stat">
+                                            <div className="stat-value">
+                                                {userBookmark.last_practiced
+                                                    ? new Date(userBookmark.last_practiced).toLocaleDateString()
+                                                    : 'Never'
+                                                }
+                                            </div>
+                                            <div className="stat-label">Last Practiced</div>
+                                        </div>
+                                    </div>
+                                )}
+
                                 <button
-                                    onClick={() => navigate('/login')}
-                                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                    onClick={updateProgress}
+                                    disabled={isSaving}
+                                    className="practice-btn mark-practiced"
                                 >
-                                    Log In
+                                    <Plus size={16} />
+                                    {isSaving ? 'Updating...' : 'Mark as Practiced'}
                                 </button>
                             </div>
-                        )}
+                        </div>
+                    )}
 
-                        {/* Source Link */}
-                        {technique.source_url && (
-                            <div className="bg-white rounded-lg shadow-sm p-6">
-                                <h3 className="text-lg font-semibold text-gray-900 mb-4">Source</h3>
-                                <a
-                                    href={technique.source_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-blue-600 hover:text-blue-700 text-sm underline"
-                                >
-                                    View Original Source
-                                </a>
-                            </div>
-                        )}
-                    </div>
+                    {/* Authentication Prompt */}
+                    {!isAuthenticated && (
+                        <div className="sidebar-card auth-prompt">
+                            <h3 className="auth-title">Track Your Progress</h3>
+                            <p className="auth-description">
+                                Log in to bookmark techniques, track your progress, and add personal notes.
+                            </p>
+                            <button
+                                onClick={() => navigate('/login')}
+                                className="auth-login-btn"
+                            >
+                                Log In
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Source Link */}
+                    {technique.source_url && (
+                        <div className="sidebar-card">
+                            <h3 className="sidebar-title related">Source</h3>
+                            <a
+                                href={technique.source_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="source-link"
+                            >
+                                View Original Source →
+                            </a>
+                        </div>
+                    )}
                 </div>
             </div>
-
-            {/* Custom styles for the range slider */}
-            <style jsx>{`
-        .slider::-webkit-slider-thumb {
-          appearance: none;
-          height: 20px;
-          width: 20px;
-          border-radius: 50%;
-          background: #3B82F6;
-          cursor: pointer;
-          box-shadow: 0 0 2px rgba(0,0,0,.2);
-        }
-        
-        .slider::-moz-range-thumb {
-          height: 20px;
-          width: 20px;
-          border-radius: 50%;
-          background: #3B82F6;
-          cursor: pointer;
-          border: none;
-          box-shadow: 0 0 2px rgba(0,0,0,.2);
-        }
-      `}</style>
         </div>
     );
 };
