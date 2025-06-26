@@ -6,6 +6,7 @@ def create_technique_models(db):
     
     class TechniqueLibrary(db.Model):
         __tablename__ = 'technique_library'
+        __table_args__ = {'extend_existing': True}  # Allow table redefinition
         
         id = db.Column(db.Integer, primary_key=True)
         name = db.Column(db.String(200), nullable=False, index=True)
@@ -128,6 +129,10 @@ def create_technique_models(db):
 
     class UserTechniqueBookmark(db.Model):
         __tablename__ = 'user_technique_bookmarks'
+        __table_args__ = (
+            db.UniqueConstraint('user_id', 'technique_id', name='unique_user_technique_bookmark'),
+            {'extend_existing': True}  # Allow table redefinition
+        )
         
         id = db.Column(db.Integer, primary_key=True)
         user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
@@ -144,7 +149,8 @@ def create_technique_models(db):
         updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
         
         # Ensure unique bookmark per user per technique
-        __table_args__ = (db.UniqueConstraint('user_id', 'technique_id', name='unique_user_technique_bookmark'),)
+        # __table_args__ = (db.UniqueConstraint('user_id', 'technique_id', name='unique_user_technique_bookmark'),)
+        # Moved to __table_args__ above
         
         # Relationships
         technique = db.relationship('TechniqueLibrary', backref='user_bookmarks')
@@ -220,6 +226,7 @@ def create_technique_models(db):
 
     class TechniqueCategory(db.Model):
         __tablename__ = 'technique_categories'
+        __table_args__ = {'extend_existing': True}  # Allow table redefinition
         
         id = db.Column(db.Integer, primary_key=True)
         name = db.Column(db.String(100), unique=True, nullable=False)

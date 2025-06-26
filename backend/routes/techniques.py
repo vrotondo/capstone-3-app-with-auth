@@ -11,17 +11,16 @@ def get_current_user_id():
     return int(current_user_id_str) if current_user_id_str else None
 
 def get_technique_service():
-    """Get technique service instance"""
+    """Get technique service instance using pre-created models from app"""
     from services.technique_service import TechniqueService
-    from models.technique_library import create_technique_models
     
     db = current_app.extensions['sqlalchemy']
-    TechniqueLibrary, UserTechniqueBookmark, TechniqueCategory = create_technique_models(db)
     
+    # Use models that were already created in app.py
     models = {
-        'TechniqueLibrary': TechniqueLibrary,
-        'UserTechniqueBookmark': UserTechniqueBookmark,
-        'TechniqueCategory': TechniqueCategory
+        'TechniqueLibrary': current_app.TechniqueLibrary,
+        'UserTechniqueBookmark': current_app.UserTechniqueBookmark,
+        'TechniqueCategory': current_app.TechniqueCategory
     }
     
     return TechniqueService(db, models)
@@ -58,7 +57,9 @@ def search_techniques():
         
     except Exception as e:
         current_app.logger.error(f"Search techniques error: {str(e)}")
-        return jsonify({'message': 'Failed to search techniques'}), 500
+        import traceback
+        traceback.print_exc()
+        return jsonify({'message': 'Failed to search techniques', 'error': str(e)}), 500
 
 @techniques_bp.route('/<int:technique_id>', methods=['GET'])
 def get_technique_detail(technique_id):
@@ -120,7 +121,9 @@ def get_available_styles():
         
     except Exception as e:
         current_app.logger.error(f"Get styles error: {str(e)}")
-        return jsonify({'message': 'Failed to get styles'}), 500
+        import traceback
+        traceback.print_exc()
+        return jsonify({'message': 'Failed to get styles', 'error': str(e)}), 500
 
 @techniques_bp.route('/categories', methods=['GET'])
 def get_available_categories():
@@ -153,7 +156,9 @@ def get_technique_stats():
         
     except Exception as e:
         current_app.logger.error(f"Get technique stats error: {str(e)}")
-        return jsonify({'message': 'Failed to get statistics'}), 500
+        import traceback
+        traceback.print_exc()
+        return jsonify({'message': 'Failed to get statistics', 'error': str(e)}), 500
 
 # Authenticated Routes
 
@@ -276,7 +281,7 @@ def import_techniques():
             return jsonify({'message': 'Source parameter required'}), 400
         
         source = data['source'].lower()
-        max_techniques = min(data.get('max_techniques', 20), 100)  # Limit for safety
+        max_techniques = min(data.get('max_techniques', 10), 50)  # Reduced limit for safety
         
         if source == 'blackbeltwiki':
             from services.blackbelt_scraper import BlackBeltWikiScraper
@@ -302,6 +307,8 @@ def import_techniques():
         
     except Exception as e:
         current_app.logger.error(f"Import techniques error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'message': f'Import failed: {str(e)}'}), 500
 
 # Test Routes
@@ -309,21 +316,34 @@ def import_techniques():
 @techniques_bp.route('/test', methods=['GET'])
 def test_techniques():
     """Test endpoint for technique system"""
-    return jsonify({
-        'message': 'Technique library system is working',
-        'timestamp': str(datetime.utcnow()),
-        'endpoints': {
-            'search': 'GET /api/techniques/search',
-            'detail': 'GET /api/techniques/<id>',
-            'popular': 'GET /api/techniques/popular',
-            'styles': 'GET /api/techniques/styles',
-            'categories': 'GET /api/techniques/categories',
-            'bookmarks': 'GET /api/techniques/bookmarks (auth)',
-            'bookmark': 'POST /api/techniques/<id>/bookmark (auth)',
-            'progress': 'PUT /api/techniques/<id>/progress (auth)',
-            'import': 'POST /api/techniques/import (auth)'
-        }
-    }), 200
+    try:
+        # Test database connection
+        TechniqueLibrary = current_app.TechniqueLibrary
+        technique_count = TechniqueLibrary.query.count()
+        
+        return jsonify({
+            'message': 'Technique library system is working',
+            'timestamp': str(datetime.utcnow()),
+            'technique_count': technique_count,
+            'endpoints': {
+                'search': 'GET /api/techniques/search',
+                'detail': 'GET /api/techniques/<id>',
+                'popular': 'GET /api/techniques/popular',
+                'styles': 'GET /api/techniques/styles',
+                'categories': 'GET /api/techniques/categories',
+                'stats': 'GET /api/techniques/stats',
+                'bookmarks': 'GET /api/techniques/bookmarks (auth)',
+                'bookmark': 'POST /api/techniques/<id>/bookmark (auth)',
+                'progress': 'PUT /api/techniques/<id>/progress (auth)',
+                'import': 'POST /api/techniques/import (auth)'
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'message': 'Technique system test failed',
+            'error': str(e)
+        }), 500
 
 @techniques_bp.route('/test-scraper', methods=['POST'])
 def test_scraper():
@@ -334,7 +354,7 @@ def test_scraper():
         print("🧪 Testing BlackBeltWiki scraper...")
         
         scraper = BlackBeltWikiScraper(delay=1)  # Faster for testing
-        techniques = scraper.scrape_techniques(max_techniques=3)
+        techniques = scraper.scrape_techniques(max_techniques=2)
         
         return jsonify({
             'message': 'Scraper test completed',
@@ -346,10 +366,12 @@ def test_scraper():
                     'description_length': len(t.get('description', '') or ''),
                     'source_url': t['source_url']
                 }
-                for t in techniques[:3]
+                for t in techniques[:2]
             ]
         }), 200
         
     except Exception as e:
         current_app.logger.error(f"Test scraper error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'message': f'Scraper test failed: {str(e)}'}), 500
