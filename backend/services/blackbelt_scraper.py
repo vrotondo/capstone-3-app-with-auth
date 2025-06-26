@@ -9,8 +9,7 @@ import os
 
 class BlackBeltWikiScraper:
     """
-    Fixed web scraper for BlackBeltWiki.com
-    Uses actual working URLs and respectful scraping
+    Enhanced BlackBeltWiki scraper with better URL discovery and content parsing
     """
     
     def __init__(self, base_url='https://blackbeltwiki.com', delay=2):
@@ -41,26 +40,69 @@ class BlackBeltWikiScraper:
             print(f"❌ Request failed: {e}")
             return None
     
-    def discover_technique_urls(self, max_pages=5):
-        """Discover technique URLs from BlackBeltWiki using real URLs"""
+    def discover_technique_urls(self, max_pages=50):
+        """Enhanced technique URL discovery"""
         technique_urls = set()
         
-        # These are actual working URLs based on BlackBeltWiki structure
-        discovery_urls = [
-            f"{self.base_url}/wiki/Main_Page",
-            f"{self.base_url}/wiki/Kicks",
-            f"{self.base_url}/wiki/Punches", 
-            f"{self.base_url}/wiki/Strikes",
-            f"{self.base_url}/wiki/Blocks",
-            f"{self.base_url}/wiki/Karate",
-            f"{self.base_url}/wiki/Taekwondo",
-            f"{self.base_url}/wiki/Martial_Arts"
+        # Updated discovery strategy - use actual BlackBeltWiki structure
+        discovery_pages = [
+            # Main technique category pages
+            f"{self.base_url}/kicking-techniques",
+            f"{self.base_url}/striking-techniques", 
+            f"{self.base_url}/blocking-techniques",
+            f"{self.base_url}/grappling-techniques",
+            f"{self.base_url}/punching-techniques",
+            f"{self.base_url}/karate-techniques",
+            f"{self.base_url}/taekwondo-techniques",
+            f"{self.base_url}/aikido-techniques",
+            f"{self.base_url}/judo-techniques",
+            f"{self.base_url}/kung-fu-techniques",
+            f"{self.base_url}/martial-arts-kicks",
+            f"{self.base_url}/martial-arts-punches",
+            f"{self.base_url}/self-defense-techniques"
         ]
         
-        print("🔍 Discovering technique URLs from BlackBeltWiki...")
+        # Add some known individual technique URLs
+        known_techniques = [
+            f"{self.base_url}/front-kick",
+            f"{self.base_url}/roundhouse-kick",
+            f"{self.base_url}/side-kick",
+            f"{self.base_url}/back-kick",
+            f"{self.base_url}/hook-kick",
+            f"{self.base_url}/axe-kick",
+            f"{self.base_url}/crescent-kick",
+            f"{self.base_url}/spinning-heel-kick",
+            f"{self.base_url}/jumping-front-kick",
+            f"{self.base_url}/reverse-punch",
+            f"{self.base_url}/jab-punch",
+            f"{self.base_url}/cross-punch",
+            f"{self.base_url}/hook-punch",
+            f"{self.base_url}/uppercut",
+            f"{self.base_url}/hammer-fist",
+            f"{self.base_url}/knife-hand-strike",
+            f"{self.base_url}/elbow-strike",
+            f"{self.base_url}/rising-block",
+            f"{self.base_url}/down-block",
+            f"{self.base_url}/inside-block",
+            f"{self.base_url}/outside-block",
+            f"{self.base_url}/hip-throw",
+            f"{self.base_url}/shoulder-throw",
+            f"{self.base_url}/foot-sweep",
+            f"{self.base_url}/arm-bar",
+            f"{self.base_url}/rear-naked-choke"
+        ]
         
-        for discovery_url in discovery_urls:
-            print(f"🔍 Checking: {discovery_url}")
+        # Add known techniques first
+        for url in known_techniques:
+            technique_urls.add(url)
+        
+        print("🔍 Discovering technique URLs from BlackBeltWiki category pages...")
+        
+        for discovery_url in discovery_pages:
+            if len(technique_urls) >= max_pages:
+                break
+                
+            print(f"🔍 Checking category page: {discovery_url}")
             
             response = self._make_request(discovery_url)
             if not response:
@@ -68,7 +110,7 @@ class BlackBeltWikiScraper:
             
             soup = BeautifulSoup(response.text, 'html.parser')
             
-            # Find all links
+            # Find all links on the page
             links = soup.find_all('a', href=True)
             
             for link in links:
@@ -76,76 +118,101 @@ class BlackBeltWikiScraper:
                 if not href:
                     continue
                 
-                full_url = urljoin(self.base_url, href)
+                # Create full URL
+                if href.startswith('/'):
+                    full_url = self.base_url + href
+                elif href.startswith('http'):
+                    full_url = href
+                else:
+                    full_url = urljoin(discovery_url, href)
+                
                 link_text = link.get_text().strip()
                 
+                # Check if this looks like a technique URL
                 if self._is_technique_url(full_url, link_text):
                     technique_urls.add(full_url)
-            
-            if len(technique_urls) >= max_pages * 20:
-                break
-        
-        # Add some known technique URLs for testing
-        known_techniques = [
-            f"{self.base_url}/wiki/Front_Kick",
-            f"{self.base_url}/wiki/Side_Kick", 
-            f"{self.base_url}/wiki/Roundhouse_Kick",
-            f"{self.base_url}/wiki/Back_Kick",
-            f"{self.base_url}/wiki/Hook_Kick",
-            f"{self.base_url}/wiki/Axe_Kick",
-            f"{self.base_url}/wiki/Reverse_Punch",
-            f"{self.base_url}/wiki/Jab",
-            f"{self.base_url}/wiki/Cross_Punch",
-            f"{self.base_url}/wiki/Uppercut"
-        ]
-        
-        for url in known_techniques:
-            technique_urls.add(url)
+                    
+                    if len(technique_urls) >= max_pages:
+                        break
         
         print(f"📊 Discovered {len(technique_urls)} potential technique URLs")
         return list(technique_urls)
     
     def _is_technique_url(self, url, link_text=''):
-        """Determine if a URL likely contains technique information"""
+        """Enhanced technique URL detection"""
         url_lower = url.lower()
         text_lower = link_text.lower()
         
-        # Technique-related keywords
-        technique_keywords = [
-            'kick', 'punch', 'strike', 'block', 'throw', 'sweep', 'grappling',
-            'technique', 'form', 'kata', 'poomsae', 'hyung',
-            'front', 'side', 'round', 'back', 'hook', 'upper', 'reverse',
-            'chop', 'elbow', 'knee', 'heel', 'toe'
+        # Must be from blackbeltwiki
+        if 'blackbeltwiki.com' not in url_lower:
+            return False
+        
+        # Exclude obvious non-technique pages
+        exclude_patterns = [
+            'category:', 'file:', 'image:', 'template:', 'user:', 'special:', 'help:',
+            'talk:', 'edit', 'history', 'login', 'register', 'search', 'random',
+            'main-page', 'index.php', 'action=', '#', 'contact', 'about',
+            'privacy', 'terms', 'legal', 'disclaimer', 'best-books', 'amazon',
+            'donate', 'forum', 'blog', 'news', 'events', 'shop', 'store'
         ]
         
-        # Exclude non-technique URLs
-        exclude_keywords = [
-            'category:', 'file:', 'image:', 'template:', 'user:',
-            'special:', 'help:', 'talk:', 'edit', 'history',
-            'login', 'register', 'search', 'random', 'main_page',
-            'index.php', 'action=', '#'
-        ]
-        
-        # Check exclusions
-        for exclude in exclude_keywords:
-            if exclude in url_lower:
+        for pattern in exclude_patterns:
+            if pattern in url_lower:
                 return False
         
-        # Check for technique keywords
+        # Look for technique-related keywords
+        technique_keywords = [
+            # Basic techniques
+            'kick', 'punch', 'strike', 'block', 'throw', 'sweep', 'choke', 'lock',
+            'grab', 'hold', 'takedown', 'submission', 'escape', 'counter',
+            
+            # Specific techniques
+            'front', 'side', 'round', 'back', 'hook', 'axe', 'crescent', 'spinning',
+            'jumping', 'flying', 'heel', 'toe', 'knee', 'elbow', 'head', 'hammer',
+            'knife', 'ridge', 'palm', 'finger', 'thumb', 'reverse', 'straight',
+            'cross', 'jab', 'uppercut', 'overhead', 'rising', 'down', 'inside',
+            'outside', 'circular', 'linear',
+            
+            # Positions and stances
+            'stance', 'guard', 'position', 'ready', 'fighting', 'horse',
+            
+            # Grappling terms
+            'arm-bar', 'leg-lock', 'hip-throw', 'shoulder-throw', 'foot-sweep',
+            'rear-naked', 'triangle', 'kimura', 'americana', 'guillotine',
+            
+            # General martial arts terms
+            'technique', 'form', 'kata', 'poomsae', 'hyung', 'pattern', 'set',
+            'combination', 'sequence', 'drill', 'exercise', 'training',
+            
+            # Weapons (if applicable)
+            'staff', 'stick', 'sword', 'knife', 'nunchaku', 'sai', 'tonfa'
+        ]
+        
+        # Check for technique keywords in URL or link text
         for keyword in technique_keywords:
             if keyword in url_lower or keyword in text_lower:
                 return True
         
-        # Check if it's a wiki page (likely to be a technique)
-        if '/wiki/' in url_lower and len(link_text) > 3:
-            # Additional checks for likely technique pages
-            if any(char.isupper() for char in link_text):  # Has capital letters
-                return True
+        # Additional checks for likely technique pages
+        if len(link_text) > 3 and len(link_text) < 100:
+            # Check if it looks like a technique name
+            words = text_lower.split()
+            if len(words) >= 2 and len(words) <= 6:
+                # Contains martial arts terms
+                martial_arts_terms = [
+                    'martial', 'arts', 'karate', 'taekwondo', 'judo', 'jiu-jitsu',
+                    'bjj', 'kung', 'fu', 'aikido', 'boxing', 'muay', 'thai',
+                    'krav', 'maga', 'wing', 'chun', 'hapkido', 'capoeira'
+                ]
+                
+                for term in martial_arts_terms:
+                    if term in text_lower or term in url_lower:
+                        return True
         
         return False
     
     def _parse_technique_page(self, html_content, url):
-        """Parse a technique page and extract structured data"""
+        """Enhanced technique page parsing"""
         soup = BeautifulSoup(html_content, 'html.parser')
         
         technique_data = {
@@ -163,13 +230,15 @@ class BlackBeltWikiScraper:
         }
         
         try:
-            # Extract title - try multiple selectors
+            # Extract title with better selectors
             title_selectors = [
+                'h1.entry-title',
+                'h1.page-title',
+                'h1.post-title',
                 'h1.firstHeading',
-                'h1.page-title', 
                 'h1',
-                '.mw-page-title-main',
-                '#firstHeading'
+                '.entry-header h1',
+                '.page-header h1'
             ]
             
             title_elem = None
@@ -179,15 +248,21 @@ class BlackBeltWikiScraper:
                     break
             
             if title_elem:
-                technique_data['name'] = title_elem.get_text().strip()
+                title_text = title_elem.get_text().strip()
+                # Clean up common title suffixes
+                title_text = re.sub(r'\s*[-–—]\s*Martial Arts.*$', '', title_text)
+                title_text = re.sub(r'\s*[-–—]\s*Black Belt Wiki.*$', '', title_text)
+                technique_data['name'] = title_text
             
-            # Extract main content
+            # Extract main content with better selectors
             content_selectors = [
+                '.entry-content',
+                '.post-content', 
+                '.content',
                 '#mw-content-text',
                 '.mw-parser-output',
-                '#content',
-                '.entry-content',
-                'main'
+                'main',
+                'article'
             ]
             
             content_area = None
@@ -197,113 +272,220 @@ class BlackBeltWikiScraper:
                     break
             
             if content_area:
-                # Extract text content
-                paragraphs = content_area.find_all('p')
-                descriptions = []
-                instructions = []
+                # Extract structured content
+                sections = self._extract_content_sections(content_area)
                 
-                for i, p in enumerate(paragraphs[:8]):
-                    text = p.get_text().strip()
-                    if text and len(text) > 20:  # Meaningful content
-                        if i < 3:
-                            descriptions.append(text)
-                        else:
-                            instructions.append(text)
-                
-                technique_data['description'] = '\n\n'.join(descriptions)
-                technique_data['instructions'] = '\n\n'.join(instructions)
-                
-                # Extract lists for steps/variations
-                lists = content_area.find_all(['ul', 'ol'])
-                variations = []
-                for list_elem in lists:
-                    items = [li.get_text().strip() for li in list_elem.find_all('li')]
-                    variations.extend(items[:5])  # Limit items
-                
-                if variations:
-                    technique_data['variations'] = '\n'.join(f"• {item}" for item in variations)
+                technique_data['description'] = sections.get('description', '')
+                technique_data['instructions'] = sections.get('instructions', '')
+                technique_data['tips'] = sections.get('tips', '')
+                technique_data['variations'] = sections.get('variations', '')
             
-            # Extract category from URL or title
-            url_parts = url.lower().split('/')
-            title_lower = technique_data['name'].lower()
+            # Extract category and style with better logic
+            self._extract_technique_metadata(technique_data, soup, url)
             
-            if 'kick' in url_parts or 'kick' in title_lower:
-                technique_data['category'] = 'Kicks'
-            elif 'punch' in url_parts or 'punch' in title_lower:
-                technique_data['category'] = 'Punches'
-            elif 'block' in url_parts or 'block' in title_lower:
-                technique_data['category'] = 'Blocks'
-            elif 'throw' in url_parts or 'throw' in title_lower:
-                technique_data['category'] = 'Throws'
-            elif any(word in title_lower for word in ['strike', 'chop', 'elbow']):
-                technique_data['category'] = 'Strikes'
+            # Extract difficulty and belt level
+            self._extract_difficulty_info(technique_data, soup)
             
-            # Extract style from content or URL
-            content_text = soup.get_text().lower()
-            styles = ['karate', 'taekwondo', 'judo', 'jiu-jitsu', 'bjj', 'kung fu', 'aikido', 'boxing']
-            
-            for style in styles:
-                if style in content_text or style in url.lower():
-                    technique_data['style'] = style.title()
-                    break
-            
-            if not technique_data['style']:
-                technique_data['style'] = 'General'
-            
-            # Estimate difficulty
-            if technique_data['instructions']:
-                instruction_length = len(technique_data['instructions'])
-                if 'advanced' in content_text or 'difficult' in content_text:
-                    technique_data['difficulty_level'] = 8
-                elif 'intermediate' in content_text:
-                    technique_data['difficulty_level'] = 5
-                elif 'basic' in content_text or 'beginner' in content_text:
-                    technique_data['difficulty_level'] = 3
-                elif instruction_length > 500:
-                    technique_data['difficulty_level'] = 6
-                else:
-                    technique_data['difficulty_level'] = 4
-            
-            # Extract belt level
-            belt_patterns = [
-                r'(white|yellow|orange|green|blue|brown|black)\s+belt',
-                r'beginner|intermediate|advanced'
-            ]
-            
-            for pattern in belt_patterns:
-                match = re.search(pattern, content_text)
-                if match:
-                    technique_data['belt_level'] = match.group(0).strip().title()
-                    break
-            
-            # Create tags
-            tags = []
-            if technique_data['category']:
-                tags.append(technique_data['category'].lower())
-            if technique_data['style'] and technique_data['style'] != 'General':
-                tags.append(technique_data['style'].lower())
-            
-            # Add descriptive tags
-            if 'front' in title_lower:
-                tags.append('linear')
-            elif 'round' in title_lower or 'hook' in title_lower:
-                tags.append('circular')
-            elif 'reverse' in title_lower or 'back' in title_lower:
-                tags.append('reverse')
-            
-            technique_data['tags'] = tags
+            # Generate tags
+            technique_data['tags'] = self._generate_tags(technique_data)
             
         except Exception as e:
             print(f"⚠️ Error parsing technique page: {e}")
         
         return technique_data
     
-    def scrape_techniques(self, max_techniques=20):
-        """Main method to scrape techniques"""
-        print("🥋 Starting BlackBeltWiki technique scraping...")
+    def _extract_content_sections(self, content_area):
+        """Extract structured content sections"""
+        sections = {
+            'description': '',
+            'instructions': '',
+            'tips': '',
+            'variations': ''
+        }
+        
+        # Get all paragraphs and headings
+        elements = content_area.find_all(['p', 'h1', 'h2', 'h3', 'h4', 'ul', 'ol'])
+        
+        current_section = 'description'
+        description_paragraphs = []
+        instruction_paragraphs = []
+        tip_paragraphs = []
+        variation_items = []
+        
+        for element in elements:
+            text = element.get_text().strip()
+            
+            if not text or len(text) < 10:
+                continue
+            
+            # Check for section headers
+            if element.name in ['h1', 'h2', 'h3', 'h4']:
+                header_text = text.lower()
+                if any(word in header_text for word in ['instruction', 'step', 'how to', 'technique']):
+                    current_section = 'instructions'
+                elif any(word in header_text for word in ['tip', 'hint', 'remember', 'important']):
+                    current_section = 'tips'
+                elif any(word in header_text for word in ['variation', 'alternative', 'similar', 'related']):
+                    current_section = 'variations'
+                continue
+            
+            # Process content based on current section
+            if element.name == 'p':
+                if current_section == 'description' and len(description_paragraphs) < 3:
+                    description_paragraphs.append(text)
+                elif current_section == 'instructions':
+                    instruction_paragraphs.append(text)
+                elif current_section == 'tips':
+                    tip_paragraphs.append(text)
+            
+            elif element.name in ['ul', 'ol']:
+                items = [li.get_text().strip() for li in element.find_all('li')]
+                if current_section == 'variations':
+                    variation_items.extend(items[:5])  # Limit variations
+                elif current_section == 'instructions' and not instruction_paragraphs:
+                    instruction_paragraphs.extend(items[:10])  # Use list as instructions
+        
+        # Compile sections
+        sections['description'] = '\n\n'.join(description_paragraphs)
+        sections['instructions'] = '\n\n'.join(instruction_paragraphs)
+        sections['tips'] = '\n\n'.join(tip_paragraphs)
+        
+        if variation_items:
+            sections['variations'] = '\n'.join(f"• {item}" for item in variation_items)
+        
+        return sections
+    
+    def _extract_technique_metadata(self, technique_data, soup, url):
+        """Extract style and category information"""
+        content_text = soup.get_text().lower()
+        
+        # Extract martial arts style
+        style_patterns = [
+            r'\b(karate)\b', r'\b(taekwondo)\b', r'\b(judo)\b', r'\b(jiu-jitsu|jiujitsu|bjj)\b',
+            r'\b(kung fu|kungfu)\b', r'\b(aikido)\b', r'\b(boxing)\b', r'\b(muay thai)\b',
+            r'\b(krav maga)\b', r'\b(wing chun)\b', r'\b(hapkido)\b', r'\b(capoeira)\b',
+            r'\b(kickboxing)\b', r'\b(mixed martial arts|mma)\b'
+        ]
+        
+        for pattern in style_patterns:
+            match = re.search(pattern, content_text)
+            if match:
+                style = match.group(1).replace('-', ' ').title()
+                if style == 'Bjj':
+                    style = 'Brazilian Jiu-Jitsu'
+                elif style == 'Mma':
+                    style = 'Mixed Martial Arts'
+                technique_data['style'] = style
+                break
+        
+        if not technique_data['style']:
+            # Fallback: check URL for style indicators
+            url_lower = url.lower()
+            if 'karate' in url_lower:
+                technique_data['style'] = 'Karate'
+            elif 'taekwondo' in url_lower:
+                technique_data['style'] = 'Taekwondo'
+            else:
+                technique_data['style'] = 'General'
+        
+        # Extract category
+        name_lower = technique_data['name'].lower()
+        
+        if any(word in name_lower for word in ['kick', 'heel', 'knee']):
+            technique_data['category'] = 'Kicks'
+        elif any(word in name_lower for word in ['punch', 'jab', 'cross', 'hook', 'uppercut', 'fist']):
+            technique_data['category'] = 'Punches'
+        elif any(word in name_lower for word in ['block', 'deflect', 'parry']):
+            technique_data['category'] = 'Blocks'
+        elif any(word in name_lower for word in ['throw', 'takedown', 'sweep']):
+            technique_data['category'] = 'Throws'
+        elif any(word in name_lower for word in ['choke', 'lock', 'hold', 'submission']):
+            technique_data['category'] = 'Grappling'
+        elif any(word in name_lower for word in ['strike', 'chop', 'elbow', 'hammer']):
+            technique_data['category'] = 'Strikes'
+        elif any(word in name_lower for word in ['stance', 'position', 'guard']):
+            technique_data['category'] = 'Stances'
+    
+    def _extract_difficulty_info(self, technique_data, soup):
+        """Extract difficulty and belt level information"""
+        content_text = soup.get_text().lower()
+        
+        # Extract difficulty level
+        if any(word in content_text for word in ['advanced', 'expert', 'master', 'black belt']):
+            technique_data['difficulty_level'] = 8
+        elif any(word in content_text for word in ['intermediate', 'moderate']):
+            technique_data['difficulty_level'] = 5
+        elif any(word in content_text for word in ['beginner', 'basic', 'fundamental', 'simple']):
+            technique_data['difficulty_level'] = 3
+        elif len(technique_data.get('instructions', '')) > 800:
+            technique_data['difficulty_level'] = 7
+        elif len(technique_data.get('instructions', '')) > 400:
+            technique_data['difficulty_level'] = 5
+        else:
+            technique_data['difficulty_level'] = 4
+        
+        # Extract belt level
+        belt_patterns = [
+            r'(white|yellow|orange|green|blue|purple|brown|black)\s+belt',
+            r'(kyu|dan)\s+\d+',
+            r'\d+\s+(kyu|dan)',
+            r'(beginner|intermediate|advanced)\s+level'
+        ]
+        
+        for pattern in belt_patterns:
+            match = re.search(pattern, content_text)
+            if match:
+                technique_data['belt_level'] = match.group(0).strip().title()
+                break
+    
+    def _generate_tags(self, technique_data):
+        """Generate relevant tags for the technique"""
+        tags = []
+        
+        # Add category as tag
+        if technique_data['category']:
+            tags.append(technique_data['category'].lower())
+        
+        # Add style as tag
+        if technique_data['style'] and technique_data['style'] != 'General':
+            tags.append(technique_data['style'].lower().replace(' ', '-'))
+        
+        # Add descriptive tags based on name
+        name_lower = technique_data['name'].lower()
+        
+        if 'front' in name_lower:
+            tags.append('linear')
+        if any(word in name_lower for word in ['round', 'hook', 'circular']):
+            tags.append('circular')
+        if 'spinning' in name_lower:
+            tags.append('spinning')
+        if 'jumping' in name_lower:
+            tags.append('jumping')
+        if 'reverse' in name_lower or 'back' in name_lower:
+            tags.append('reverse')
+        if any(word in name_lower for word in ['power', 'strong', 'heavy']):
+            tags.append('power')
+        if any(word in name_lower for word in ['quick', 'fast', 'snap']):
+            tags.append('speed')
+        
+        # Add difficulty tags
+        difficulty = technique_data.get('difficulty_level')
+        if difficulty:
+            if difficulty <= 3:
+                tags.append('basic')
+            elif difficulty <= 6:
+                tags.append('intermediate')
+            else:
+                tags.append('advanced')
+        
+        return tags[:8]  # Limit to 8 tags
+    
+    def scrape_techniques(self, max_techniques=30):
+        """Enhanced technique scraping with better error handling"""
+        print("🥋 Starting enhanced BlackBeltWiki technique scraping...")
         
         # Discover URLs
-        technique_urls = self.discover_technique_urls()
+        technique_urls = self.discover_technique_urls(max_pages=max_techniques * 2)
         
         if not technique_urls:
             print("❌ No technique URLs discovered")
@@ -319,7 +501,7 @@ class BlackBeltWikiScraper:
             
             # Check cache first
             cached_data = self._load_from_cache(url)
-            if cached_data:
+            if cached_data and self._is_cache_valid(cached_data):
                 print("📁 Using cached data")
                 scraped_techniques.append(cached_data)
                 continue
@@ -331,15 +513,32 @@ class BlackBeltWikiScraper:
             
             technique_data = self._parse_technique_page(response.text, url)
             
-            if technique_data['name']:
+            if technique_data['name'] and len(technique_data['name']) > 2:
                 scraped_techniques.append(technique_data)
                 self._save_to_cache(url, technique_data)
                 print(f"✅ Scraped: {technique_data['name']} ({technique_data['style']})")
+                
+                # Show brief preview
+                if technique_data['description']:
+                    preview = technique_data['description'][:100] + "..." if len(technique_data['description']) > 100 else technique_data['description']
+                    print(f"   Preview: {preview}")
             else:
-                print("⚠️ No technique name found, skipping")
+                print("⚠️ No valid technique data found, skipping")
         
-        print(f"\n🎉 Scraping complete! Found {len(scraped_techniques)} techniques")
+        print(f"\n🎉 Scraping complete! Successfully scraped {len(scraped_techniques)} techniques")
         return scraped_techniques
+    
+    def _is_cache_valid(self, cached_data, max_age_days=7):
+        """Check if cached data is still valid"""
+        if 'cached_at' not in cached_data:
+            return False
+        
+        try:
+            cached_time = datetime.fromisoformat(cached_data['cached_at'])
+            age = datetime.utcnow() - cached_time
+            return age.days < max_age_days
+        except:
+            return False
     
     def _load_from_cache(self, url):
         """Load cached technique data"""
@@ -369,22 +568,30 @@ class BlackBeltWikiScraper:
     def _get_cache_filename(self, url):
         """Generate cache filename from URL"""
         parsed = urlparse(url)
-        filename = f"{parsed.netloc}_{parsed.path}".replace('/', '_').replace('\\', '_')
+        filename = f"{parsed.netloc}{parsed.path}".replace('/', '_').replace('\\', '_')
         filename = re.sub(r'[<>:"/\\|?*]', '_', filename)[:100]
         return f"{filename}.json"
 
 # Test function
-def test_scraper():
-    """Test the scraper with a few techniques"""
-    scraper = BlackBeltWikiScraper(delay=1)
-    techniques = scraper.scrape_techniques(max_techniques=3)
+def test_enhanced_scraper():
+    """Test the enhanced scraper"""
+    print("🧪 Testing Enhanced BlackBeltWiki Scraper")
+    print("=" * 50)
     
-    print("\n📊 Test Results:")
-    for technique in techniques:
-        print(f"✅ {technique['name']} ({technique['style']})")
+    scraper = BlackBeltWikiScraper(delay=1)
+    techniques = scraper.scrape_techniques(max_techniques=5)
+    
+    print(f"\n📊 Test Results: Found {len(techniques)} techniques")
+    
+    for i, technique in enumerate(techniques, 1):
+        print(f"\n{i}. {technique['name']}")
+        print(f"   Style: {technique['style']}")
+        print(f"   Category: {technique['category']}")
+        print(f"   Difficulty: {technique['difficulty_level']}")
+        print(f"   Tags: {', '.join(technique['tags'])}")
         if technique['description']:
-            print(f"   Description: {technique['description'][:100]}...")
-        print()
+            preview = technique['description'][:150] + "..." if len(technique['description']) > 150 else technique['description']
+            print(f"   Description: {preview}")
 
 if __name__ == "__main__":
-    test_scraper()
+    test_enhanced_scraper()
