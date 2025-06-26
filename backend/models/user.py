@@ -15,20 +15,42 @@ def create_models(db):
         password_hash = db.Column(db.String(255), nullable=False)
         first_name = db.Column(db.String(50), nullable=False)
         last_name = db.Column(db.String(50), nullable=False)
+        
+        # Enhanced profile fields
+        bio = db.Column(db.Text, nullable=True)
+        location = db.Column(db.String(100), nullable=True)
+        date_of_birth = db.Column(db.Date, nullable=True)
+        
+        # Martial arts information
         primary_style = db.Column(db.String(50), nullable=True)
         belt_rank = db.Column(db.String(30), nullable=True)
+        years_training = db.Column(db.Integer, default=0)
+        instructor = db.Column(db.String(100), nullable=True)
         dojo = db.Column(db.String(100), nullable=True)
+        goals = db.Column(db.Text, nullable=True)
+        
+        # Timestamps
         created_at = db.Column(db.DateTime, default=datetime.utcnow)
         updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
         
-        def __init__(self, email, password, first_name, last_name, primary_style=None, belt_rank=None, dojo=None):
+        def __init__(self, email, password, first_name, last_name, **kwargs):
             self.email = email.lower().strip()
             self.password_hash = generate_password_hash(password)
             self.first_name = first_name.strip()
             self.last_name = last_name.strip()
-            self.primary_style = primary_style
-            self.belt_rank = belt_rank
-            self.dojo = dojo
+            
+            # Enhanced profile fields
+            self.bio = kwargs.get('bio')
+            self.location = kwargs.get('location')
+            self.date_of_birth = kwargs.get('date_of_birth')
+            
+            # Martial arts fields
+            self.primary_style = kwargs.get('primary_style')
+            self.belt_rank = kwargs.get('belt_rank')
+            self.years_training = kwargs.get('years_training', 0)
+            self.instructor = kwargs.get('instructor')
+            self.dojo = kwargs.get('dojo')
+            self.goals = kwargs.get('goals')
         
         def check_password(self, password):
             """Check if provided password matches hash"""
@@ -39,19 +61,79 @@ def create_models(db):
             self.password_hash = generate_password_hash(password)
             self.updated_at = datetime.utcnow()
         
-        def to_dict(self, include_sensitive=False):
+        def update_profile(self, **kwargs):
+            """Update user profile fields"""
+            # Personal information
+            if 'first_name' in kwargs:
+                self.first_name = kwargs['first_name'].strip()
+            if 'last_name' in kwargs:
+                self.last_name = kwargs['last_name'].strip()
+            if 'bio' in kwargs:
+                self.bio = kwargs['bio']
+            if 'location' in kwargs:
+                self.location = kwargs['location']
+            if 'date_of_birth' in kwargs:
+                self.date_of_birth = kwargs['date_of_birth']
+            
+            # Martial arts information
+            if 'primary_style' in kwargs:
+                self.primary_style = kwargs['primary_style']
+            if 'belt_rank' in kwargs:
+                self.belt_rank = kwargs['belt_rank']
+            if 'years_training' in kwargs:
+                self.years_training = kwargs['years_training']
+            if 'instructor' in kwargs:
+                self.instructor = kwargs['instructor']
+            if 'dojo' in kwargs:
+                self.dojo = kwargs['dojo']
+            if 'goals' in kwargs:
+                self.goals = kwargs['goals']
+            
+            self.updated_at = datetime.utcnow()
+        
+        def get_training_stats(self):
+            """Get user's training statistics"""
+            from sqlalchemy import func
+            
+            # Get session count and total hours
+            session_stats = db.session.query(
+                func.count(TrainingSession.id).label('session_count'),
+                func.coalesce(func.sum(TrainingSession.duration), 0).label('total_minutes')
+            ).filter_by(user_id=self.id).first()
+            
+            # Get technique count
+            technique_count = TechniqueProgress.query.filter_by(user_id=self.id).count()
+            
+            return {
+                'session_count': session_stats.session_count if session_stats else 0,
+                'total_hours': round((session_stats.total_minutes or 0) / 60, 1) if session_stats else 0,
+                'technique_count': technique_count
+            }
+        
+        def to_dict(self, include_sensitive=False, include_stats=False):
             """Convert user to dictionary"""
             data = {
                 'id': self.id,
                 'email': self.email,
+                'name': f"{self.first_name} {self.last_name}".strip(),
                 'first_name': self.first_name,
                 'last_name': self.last_name,
-                'martial_art': self.primary_style,  # Frontend expects 'martial_art'
-                'current_belt': self.belt_rank,     # Frontend expects 'current_belt'
+                'bio': self.bio,
+                'location': self.location,
+                'dateOfBirth': self.date_of_birth.isoformat() if self.date_of_birth else None,
+                'primaryStyle': self.primary_style,
+                'currentBelt': self.belt_rank,
+                'yearsTraining': self.years_training or 0,
+                'instructor': self.instructor,
                 'dojo': self.dojo,
+                'goals': self.goals,
                 'created_at': self.created_at.isoformat() if self.created_at else None,
                 'updated_at': self.updated_at.isoformat() if self.updated_at else None
             }
+            
+            if include_stats:
+                stats = self.get_training_stats()
+                data.update(stats)
             
             if include_sensitive:
                 # Add any sensitive data that should only be included in specific contexts
@@ -77,6 +159,12 @@ def create_models(db):
         def delete(self):
             """Delete user from database"""
             try:
+                # Delete related records first
+                UserPreferences.query.filter_by(user_id=self.id).delete()
+                TechniqueProgress.query.filter_by(user_id=self.id).delete()
+                TrainingSession.query.filter_by(user_id=self.id).delete()
+                
+                # Delete user
                 db.session.delete(self)
                 db.session.commit()
                 return True
@@ -86,6 +174,84 @@ def create_models(db):
         
         def __repr__(self):
             return f'<User {self.email}>'
+
+    class UserPreferences(db.Model):
+        __tablename__ = 'user_preferences'
+        
+        id = db.Column(db.Integer, primary_key=True)
+        user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+        
+        # Notification preferences
+        email_notifications = db.Column(db.Boolean, default=True)
+        weekly_digest = db.Column(db.Boolean, default=True)
+        
+        # Privacy preferences
+        public_profile = db.Column(db.Boolean, default=False)
+        show_progress = db.Column(db.Boolean, default=True)
+        
+        # App preferences
+        theme = db.Column(db.String(20), default='light')  # light, dark, auto
+        language = db.Column(db.String(10), default='en')
+        
+        created_at = db.Column(db.DateTime, default=datetime.utcnow)
+        updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+        
+        # Relationship
+        user = db.relationship('User', backref=db.backref('preferences', uselist=False))
+        
+        def __init__(self, user_id, **kwargs):
+            self.user_id = user_id
+            self.email_notifications = kwargs.get('email_notifications', True)
+            self.weekly_digest = kwargs.get('weekly_digest', True)
+            self.public_profile = kwargs.get('public_profile', False)
+            self.show_progress = kwargs.get('show_progress', True)
+            self.theme = kwargs.get('theme', 'light')
+            self.language = kwargs.get('language', 'en')
+        
+        def update_preferences(self, **kwargs):
+            """Update user preferences"""
+            if 'email_notifications' in kwargs:
+                self.email_notifications = kwargs['email_notifications']
+            if 'weekly_digest' in kwargs:
+                self.weekly_digest = kwargs['weekly_digest']
+            if 'public_profile' in kwargs:
+                self.public_profile = kwargs['public_profile']
+            if 'show_progress' in kwargs:
+                self.show_progress = kwargs['show_progress']
+            if 'theme' in kwargs:
+                self.theme = kwargs['theme']
+            if 'language' in kwargs:
+                self.language = kwargs['language']
+            
+            self.updated_at = datetime.utcnow()
+        
+        def to_dict(self):
+            """Convert preferences to dictionary"""
+            return {
+                'emailNotifications': self.email_notifications,
+                'weeklyDigest': self.weekly_digest,
+                'publicProfile': self.public_profile,
+                'showProgress': self.show_progress,
+                'theme': self.theme,
+                'language': self.language
+            }
+        
+        def save(self):
+            """Save preferences to database"""
+            db.session.add(self)
+            db.session.commit()
+        
+        @staticmethod
+        def get_or_create(user_id):
+            """Get user preferences or create default ones"""
+            prefs = UserPreferences.query.filter_by(user_id=user_id).first()
+            if not prefs:
+                prefs = UserPreferences(user_id=user_id)
+                prefs.save()
+            return prefs
+        
+        def __repr__(self):
+            return f'<UserPreferences for user {self.user_id}>'
 
     class TrainingSession(db.Model):
         __tablename__ = 'training_sessions'
@@ -270,4 +436,4 @@ def create_models(db):
         def __repr__(self):
             return f'<TechniqueProgress {self.technique_name} ({self.style}): {self.proficiency_level}/10>'
 
-    return User, TrainingSession, TechniqueProgress
+    return User, TrainingSession, TechniqueProgress, UserPreferences
