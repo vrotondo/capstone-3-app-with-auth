@@ -35,25 +35,19 @@ const Navigation = () => {
             description: 'Overview and recent activity'
         },
         {
-            name: 'Log Training',
-            href: '/log-training',
+            name: 'Training Sessions',
+            href: '/training',
             icon: Calendar,
-            description: 'Record your training sessions'
+            description: 'View and log training sessions'
         },
         {
-            name: 'Analytics',
-            href: '/analytics',
-            icon: BarChart3,
-            description: 'View your progress and stats'
-        },
-        {
-            name: 'Technique Library',
+            name: 'Techniques',
             href: '/techniques',
             icon: BookOpen,
             description: 'Browse martial arts techniques'
         },
         {
-            name: 'Exercise Database',
+            name: 'Exercises',
             href: '/exercises',
             icon: Dumbbell,
             description: 'Browse workout exercises'
