@@ -612,3 +612,206 @@ def test_training_auth():
     except Exception as e:
         print(f"❌ Auth test error: {str(e)}")
         return jsonify({'message': f'Auth test failed: {str(e)}'}), 500
+    
+@training_bp.route('/sessions/<int:session_id>/exercises', methods=['POST'])
+@jwt_required()
+def add_exercise_to_session(session_id):
+    """Add an exercise to a training session"""
+    try:
+        current_user_id = get_current_user_id()
+        data = request.get_json()
+        
+        if not data or not data.get('exercise_id'):
+            return jsonify({'message': 'Exercise ID is required'}), 400
+        
+        db = get_db()
+        TrainingSession = current_app.TrainingSession
+        Exercise = current_app.Exercise
+        WorkoutExercise = current_app.WorkoutExercise
+        
+        # Verify session ownership
+        session = TrainingSession.query.filter_by(id=session_id, user_id=current_user_id).first()
+        if not session:
+            return jsonify({'message': 'Training session not found'}), 404
+        
+        # Verify exercise exists
+        exercise = Exercise.query.get(data['exercise_id'])
+        if not exercise:
+            return jsonify({'message': 'Exercise not found'}), 404
+        
+        # Check if exercise already in session
+        existing = WorkoutExercise.query.filter_by(
+            training_session_id=session_id,
+            exercise_id=data['exercise_id']
+        ).first()
+        
+        if existing:
+            return jsonify({'message': 'Exercise already added to this session'}), 409
+        
+        # Create workout exercise
+        workout_exercise = WorkoutExercise(
+            training_session_id=session_id,
+            exercise_id=data['exercise_id'],
+            sets=data.get('sets', 0),
+            reps=data.get('reps', 0),
+            weight=data.get('weight', 0.0),
+            duration=data.get('duration', 0),
+            distance=data.get('distance', 0.0),
+            rest_time=data.get('rest_time', 0),
+            order_in_workout=data.get('order', 0),
+            notes=data.get('notes', ''),
+            started_at=datetime.utcnow() if data.get('start_now') else None
+        )
+        
+        db.session.add(workout_exercise)
+        db.session.commit()
+        
+        print(f"✅ Added exercise {exercise.name} to session {session_id}")
+        
+        return jsonify({
+            'workout_exercise': workout_exercise.to_dict(),
+            'message': f'Exercise "{exercise.name}" added to training session'
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Failed to add exercise to session: {str(e)}")
+        return jsonify({'message': f'Failed to add exercise: {str(e)}'}), 500
+
+@training_bp.route('/sessions/<int:session_id>/exercises/<int:workout_exercise_id>', methods=['PUT'])
+@jwt_required()
+def update_workout_exercise(session_id, workout_exercise_id):
+    """Update exercise performance data in a training session"""
+    try:
+        current_user_id = get_current_user_id()
+        data = request.get_json()
+        
+        db = get_db()
+        TrainingSession = current_app.TrainingSession
+        WorkoutExercise = current_app.WorkoutExercise
+        
+        # Verify session ownership
+        session = TrainingSession.query.filter_by(id=session_id, user_id=current_user_id).first()
+        if not session:
+            return jsonify({'message': 'Training session not found'}), 404
+        
+        # Get workout exercise
+        workout_exercise = WorkoutExercise.query.filter_by(
+            id=workout_exercise_id,
+            training_session_id=session_id
+        ).first()
+        
+        if not workout_exercise:
+            return jsonify({'message': 'Exercise not found in this session'}), 404
+        
+        # Update performance data
+        if 'sets' in data:
+            workout_exercise.sets = data['sets']
+        if 'reps' in data:
+            workout_exercise.reps = data['reps']
+        if 'weight' in data:
+            workout_exercise.weight = data['weight']
+        if 'duration' in data:
+            workout_exercise.duration = data['duration']
+        if 'distance' in data:
+            workout_exercise.distance = data['distance']
+        if 'rest_time' in data:
+            workout_exercise.rest_time = data['rest_time']
+        if 'difficulty_rating' in data:
+            workout_exercise.difficulty_rating = data['difficulty_rating']
+        if 'form_rating' in data:
+            workout_exercise.form_rating = data['form_rating']
+        if 'notes' in data:
+            workout_exercise.notes = data['notes']
+        if 'order_in_workout' in data:
+            workout_exercise.order_in_workout = data['order_in_workout']
+        
+        # Handle completion
+        if data.get('completed'):
+            workout_exercise.completed_at = datetime.utcnow()
+        elif data.get('started'):
+            workout_exercise.started_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return jsonify({
+            'workout_exercise': workout_exercise.to_dict(),
+            'message': 'Exercise performance updated successfully'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': f'Failed to update exercise: {str(e)}'}), 500
+
+@training_bp.route('/sessions/<int:session_id>/exercises/<int:workout_exercise_id>', methods=['DELETE'])
+@jwt_required()
+def remove_exercise_from_session(session_id, workout_exercise_id):
+    """Remove an exercise from a training session"""
+    try:
+        current_user_id = get_current_user_id()
+        
+        db = get_db()
+        TrainingSession = current_app.TrainingSession
+        WorkoutExercise = current_app.WorkoutExercise
+        
+        # Verify session ownership
+        session = TrainingSession.query.filter_by(id=session_id, user_id=current_user_id).first()
+        if not session:
+            return jsonify({'message': 'Training session not found'}), 404
+        
+        # Get workout exercise
+        workout_exercise = WorkoutExercise.query.filter_by(
+            id=workout_exercise_id,
+            training_session_id=session_id
+        ).first()
+        
+        if not workout_exercise:
+            return jsonify({'message': 'Exercise not found in this session'}), 404
+        
+        exercise_name = workout_exercise.exercise_ref.name
+        db.session.delete(workout_exercise)
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'Exercise "{exercise_name}" removed from training session'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': f'Failed to remove exercise: {str(e)}'}), 500
+
+@training_bp.route('/sessions/<int:session_id>/exercises', methods=['GET'])
+@jwt_required()
+def get_session_exercises(session_id):
+    """Get all exercises in a training session"""
+    try:
+        current_user_id = get_current_user_id()
+        
+        TrainingSession = current_app.TrainingSession
+        WorkoutExercise = current_app.WorkoutExercise
+        
+        # Verify session ownership
+        session = TrainingSession.query.filter_by(id=session_id, user_id=current_user_id).first()
+        if not session:
+            return jsonify({'message': 'Training session not found'}), 404
+        
+        # Get exercises ordered by workout order
+        workout_exercises = WorkoutExercise.query.filter_by(
+            training_session_id=session_id
+        ).order_by(WorkoutExercise.order_in_workout, WorkoutExercise.created_at).all()
+        
+        return jsonify({
+            'session': {
+                'id': session.id,
+                'name': session.name,
+                'date': session.date.isoformat() if session.date else None,
+                'duration': session.duration,
+                'status': session.status
+            },
+            'exercises': [we.to_dict() for we in workout_exercises],
+            'count': len(workout_exercises),
+            'message': f'Found {len(workout_exercises)} exercises in training session'
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'message': f'Failed to get session exercises: {str(e)}'}), 500

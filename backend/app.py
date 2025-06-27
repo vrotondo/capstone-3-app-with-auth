@@ -24,7 +24,7 @@ def create_app():
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///dojotracker.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['JWT_SECRET_KEY'] = 'jwt-secret-change-in-production'
-    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=7)
+    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=7)  # Extended for development
     app.config['JWT_ALGORITHM'] = 'HS256'
     
     # Important: These settings help with JWT token handling
@@ -94,7 +94,7 @@ def create_app():
          supports_credentials=True,
          expose_headers=['Authorization'])
 
-    # Create models - FIXED: Handle correct number of returned models
+    # Create user models
     print("📦 Loading user models...")
     try:
         from models.user import create_models
@@ -131,6 +131,16 @@ def create_app():
         print(f"❌ Error loading technique library models: {e}")
         raise
 
+    # Create exercise models
+    print("📦 Loading exercise models...")
+    try:
+        from models.exercise import create_exercise_models
+        ExerciseCategory, MuscleGroup, Equipment, Exercise, WorkoutExercise = create_exercise_models(db)
+        print("✅ Exercise models loaded: ExerciseCategory, MuscleGroup, Equipment, Exercise, WorkoutExercise")
+    except Exception as e:
+        print(f"❌ Error loading exercise models: {e}")
+        raise
+
     # Make models available globally in the app
     app.User = User
     app.TrainingSession = TrainingSession
@@ -138,12 +148,17 @@ def create_app():
     app.TechniqueLibrary = TechniqueLibrary
     app.UserTechniqueBookmark = UserTechniqueBookmark
     app.TechniqueCategory = TechniqueCategory
+    app.ExerciseCategory = ExerciseCategory
+    app.MuscleGroup = MuscleGroup
+    app.Equipment = Equipment
+    app.Exercise = Exercise
+    app.WorkoutExercise = WorkoutExercise
     
     # Add UserPreferences if it exists
     if UserPreferences:
         app.UserPreferences = UserPreferences
 
-    # Register blueprints
+    # Register blueprints - SINGLE REGISTRATION ONLY
     print("🔗 Registering blueprints...")
     
     try:
@@ -173,9 +188,17 @@ def create_app():
     except Exception as e:
         print(f"❌ Failed to import user blueprint: {e}")
         print("❌ Make sure you created backend/routes/user.py")
-        # Continue without user blueprint for now
         user_bp = None
     
+    try:
+        from routes.exercises import exercises_bp
+        print("✅ Exercises blueprint imported")
+    except Exception as e:
+        print(f"❌ Failed to import exercises blueprint: {e}")
+        print("❌ Make sure you created backend/routes/exercises.py")
+        exercises_bp = None
+    
+    # Register all blueprints (only once!)
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(training_bp, url_prefix='/api/training')
     app.register_blueprint(techniques_bp, url_prefix='/api/techniques')
@@ -185,6 +208,12 @@ def create_app():
         print("✅ User blueprint registered at /api/user")
     else:
         print("❌ User blueprint not registered")
+    
+    if exercises_bp:
+        app.register_blueprint(exercises_bp, url_prefix='/api/exercises')
+        print("✅ Exercises blueprint registered at /api/exercises")
+    else:
+        print("❌ Exercises blueprint not registered")
         
     print("✅ Blueprints registration complete")
 
@@ -195,7 +224,7 @@ def create_app():
             'message': 'DojoTracker API is running!',
             'version': '1.0.0',
             'status': 'healthy',
-            'features': ['Training Sessions', 'Technique Library', 'User Authentication']
+            'features': ['Training Sessions', 'Technique Library', 'User Authentication', 'Exercise Database']
         })
 
     @app.route('/api/health')
@@ -225,7 +254,8 @@ def create_app():
             'jwt_header_type': app.config.get('JWT_HEADER_TYPE'),
             'jwt_algorithm': app.config.get('JWT_ALGORITHM')
         })
-    
+
+    # Add debug route to see all registered routes
     @app.route('/api/debug/routes')
     def debug_routes():
         """Debug endpoint to see all registered routes"""
@@ -253,22 +283,25 @@ if __name__ == '__main__':
             db.create_all()
             print("✅ Database tables created successfully")
             
-            # FIXED: Safe database statistics that won't fail if schema is wrong
+            # Safe database statistics that won't fail if schema is wrong
             User = app.User
             TrainingSession = app.TrainingSession
             TechniqueProgress = app.TechniqueProgress
             TechniqueLibrary = app.TechniqueLibrary
+            Exercise = app.Exercise
             
             # Try to get counts, but handle errors gracefully
             try:
                 user_count = User.query.count()
                 session_count = TrainingSession.query.count()
                 technique_count = TechniqueLibrary.query.count()
+                exercise_count = Exercise.query.count()
                 
                 print(f"📊 Current database state:")
                 print(f"   Users: {user_count}")
                 print(f"   Training Sessions: {session_count}")
                 print(f"   Techniques: {technique_count}")
+                print(f"   Exercises: {exercise_count}")
             except Exception as count_error:
                 print(f"ℹ️ Could not get database counts (normal for new database): {count_error}")
                 print("📊 Database appears to be freshly created")
@@ -283,7 +316,9 @@ if __name__ == '__main__':
     print("🔗 Frontend should use: http://localhost:8000/api")
     print("🧪 Test auth at: http://localhost:8000/api/auth/test")
     print("🥋 Test techniques at: http://localhost:8000/api/techniques/test")
+    print("💪 Test exercises at: http://localhost:8000/api/exercises/test")
     print("🔍 JWT debug at: http://localhost:8000/api/debug/jwt")
+    print("🗺️ All routes at: http://localhost:8000/api/debug/routes")
     print("=" * 50)
     
     try:
