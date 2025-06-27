@@ -10,11 +10,12 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Training from './pages/Training';
-import Techniques from './pages/Techniques'; // Updated to use the main Techniques page
+import Techniques from './pages/Techniques';
 import TechniqueLibrary from './pages/TechniqueLibrary';
 import TechniqueDetail from './pages/TechniqueDetail';
 import MyTechniques from './pages/MyTechniques';
 import Profile from './pages/Profile';
+import Exercises from './pages/Exercises';
 
 // Styles
 import './styles/global.css';
@@ -106,7 +107,7 @@ const AppContent = () => {
             path="/techniques"
             element={
               <Layout>
-                <Techniques />
+                <Exercises />
               </Layout>
             }
           />
@@ -140,6 +141,15 @@ const AppContent = () => {
                   <MyTechniques />
                 </Layout>
               </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/exercises"
+            element={
+              <Layout>
+                <Exercises />
+              </Layout>
             }
           />
 

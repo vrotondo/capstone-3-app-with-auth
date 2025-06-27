@@ -13,6 +13,9 @@
 @import './styles/pages/techniques.css';
 @import './styles/pages/my-techniques.css';
 @import './styles/pages/profile.css';
+@import './styles/components/exercises.css';
+@import './styles/pages/exercises.css';
+@import './styles/components/loading.css';
 
 .technique-description,
 .enhanced-technique-name,

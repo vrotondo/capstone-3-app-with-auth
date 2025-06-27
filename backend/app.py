@@ -169,11 +169,11 @@ def create_app():
         raise
     
     try:
-        from routes.training import training_bp
-        print("✅ Training blueprint imported")
+        from routes.wger import wger_bp
+        print("✅ wger blueprint imported")
     except Exception as e:
-        print(f"❌ Failed to import training blueprint: {e}")
-        raise
+        print(f"❌ Failed to import wger blueprint: {e}")
+        wger_bp = None
     
     try:
         from routes.techniques import techniques_bp
@@ -197,6 +197,10 @@ def create_app():
         print(f"❌ Failed to import exercises blueprint: {e}")
         print("❌ Make sure you created backend/routes/exercises.py")
         exercises_bp = None
+
+    if wger_bp:
+        app.register_blueprint(wger_bp, url_prefix='/api/wger')
+        print("✅ wger blueprint registered at /api/wger")
     
     # Register all blueprints (only once!)
     app.register_blueprint(auth_bp, url_prefix='/api/auth')

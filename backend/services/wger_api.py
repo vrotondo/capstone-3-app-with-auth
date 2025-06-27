@@ -1,11 +1,10 @@
-# Create this file: backend/services/wger_api.py
-
 import requests
 import json
 from typing import Dict, List, Optional
 from dataclasses import dataclass
 from datetime import datetime
 import time
+import logging
 
 @dataclass
 class WgerExercise:
@@ -21,9 +20,11 @@ class WgerExercise:
     variations: List[str]
     license_author: str
     creation_date: str
+    uuid: Optional[str] = None
+    images: Optional[List[str]] = None
 
 class WgerAPIService:
-    """Service for interacting with wger Exercise Database API"""
+    """Enhanced service for interacting with wger Exercise Database API"""
     
     def __init__(self):
         self.base_url = "https://wger.de/api/v2"
@@ -34,64 +35,148 @@ class WgerAPIService:
             'Content-Type': 'application/json'
         })
         
-        # Cache for API responses to avoid repeated calls
+        # Enhanced cache with longer duration for static data
         self.cache = {}
-        self.cache_duration = 3600  # 1 hour
+        self.cache_duration = 3600  # 1 hour for dynamic data
+        self.static_cache_duration = 86400  # 24 hours for categories, muscles, equipment
         
-    def _make_request(self, endpoint: str, params: Dict = None) -> Dict:
-        """Make authenticated request to wger API with caching"""
+        # Setup logging
+        self.logger = logging.getLogger(__name__)
+        
+        # Track API calls for rate limiting
+        self.last_request_time = 0
+        self.min_request_interval = 0.1  # 100ms between requests
+        
+    def _rate_limit(self):
+        """Implement simple rate limiting"""
+        current_time = time.time()
+        time_since_last = current_time - self.last_request_time
+        if time_since_last < self.min_request_interval:
+            time.sleep(self.min_request_interval - time_since_last)
+        self.last_request_time = time.time()
+        
+    def _make_request(self, endpoint: str, params: Dict = None, use_static_cache: bool = False) -> Dict:
+        """Make authenticated request to wger API with enhanced caching"""
         cache_key = f"{endpoint}_{str(params)}"
+        cache_duration = self.static_cache_duration if use_static_cache else self.cache_duration
         
         # Check cache first
         if cache_key in self.cache:
             cached_data, timestamp = self.cache[cache_key]
-            if time.time() - timestamp < self.cache_duration:
-                print(f"📋 Using cached data for {endpoint}")
+            if time.time() - timestamp < cache_duration:
+                self.logger.info(f"📋 Using cached data for {endpoint}")
                 return cached_data
+        
+        # Rate limiting
+        self._rate_limit()
         
         try:
             url = f"{self.base_url}/{endpoint.lstrip('/')}"
-            print(f"🌐 Making request to: {url}")
+            self.logger.info(f"🌐 Making request to: {url}")
             
-            response = self.session.get(url, params=params or {}, timeout=10)
+            # Add default parameters for better results
+            default_params = {
+                'status': 2,  # Only approved exercises
+                'limit': 100  # Get more results per page
+            }
+            
+            if params:
+                default_params.update(params)
+            
+            response = self.session.get(url, params=default_params, timeout=15)
             response.raise_for_status()
             
             data = response.json()
             
             # Cache the response
             self.cache[cache_key] = (data, time.time())
-            print(f"✅ Successfully fetched {endpoint}")
+            self.logger.info(f"✅ Successfully fetched {endpoint}")
             
             return data
             
         except requests.exceptions.RequestException as e:
-            print(f"❌ wger API request failed: {str(e)}")
+            self.logger.error(f"❌ wger API request failed: {str(e)}")
             return {}
         except json.JSONDecodeError as e:
-            print(f"❌ Invalid JSON response from wger API: {str(e)}")
+            self.logger.error(f"❌ Invalid JSON response from wger API: {str(e)}")
             return {}
     
+    def _fetch_all_pages(self, endpoint: str, params: Dict = None, max_pages: int = 10) -> List[Dict]:
+        """Fetch multiple pages of results with limit to prevent infinite loops"""
+        all_results = []
+        current_params = params.copy() if params else {}
+        page_count = 0
+        
+        while page_count < max_pages:
+            data = self._make_request(endpoint, current_params)
+            
+            if not data or 'results' not in data:
+                break
+                
+            results = data['results']
+            if not results:
+                break
+                
+            all_results.extend(results)
+            
+            # Check for next page
+            next_url = data.get('next')
+            if not next_url:
+                break
+                
+            # Extract offset from next URL
+            try:
+                from urllib.parse import urlparse, parse_qs
+                parsed = urlparse(next_url)
+                query_params = parse_qs(parsed.query)
+                if 'offset' in query_params:
+                    current_params['offset'] = int(query_params['offset'][0])
+                else:
+                    break
+            except (ValueError, IndexError):
+                break
+                
+            page_count += 1
+            
+        self.logger.info(f"Fetched {len(all_results)} total results from {page_count + 1} pages")
+        return all_results
+    
     def get_exercise_categories(self) -> List[Dict]:
-        """Get all exercise categories"""
-        data = self._make_request("exercisecategory/")
-        return data.get('results', [])
+        """Get all exercise categories with enhanced data"""
+        data = self._make_request("exercisecategory/", use_static_cache=True)
+        categories = data.get('results', [])
+        
+        # Enhance categories with exercise counts
+        for category in categories:
+            try:
+                # Get exercise count for this category
+                exercise_data = self._make_request("exercise/", {
+                    'category': category['id'],
+                    'limit': 1
+                })
+                category['exercise_count'] = exercise_data.get('count', 0)
+            except:
+                category['exercise_count'] = 0
+                
+        return categories
     
     def get_muscles(self) -> List[Dict]:
         """Get all muscle groups"""
-        data = self._make_request("muscle/")
+        data = self._make_request("muscle/", use_static_cache=True)
         return data.get('results', [])
     
     def get_equipment(self) -> List[Dict]:
         """Get all equipment types"""
-        data = self._make_request("equipment/")
+        data = self._make_request("equipment/", use_static_cache=True)
         return data.get('results', [])
     
     def get_exercises(self, limit: int = 50, offset: int = 0, 
                      category: Optional[int] = None, 
                      muscle: Optional[int] = None,
                      equipment: Optional[int] = None,
-                     language: int = 2) -> Dict:  # 2 = English
-        """Get exercises with optional filtering"""
+                     language: int = 2,  # 2 = English
+                     search: Optional[str] = None) -> Dict:
+        """Get exercises with enhanced filtering options"""
         params = {
             'limit': limit,
             'offset': offset,
@@ -105,67 +190,106 @@ class WgerAPIService:
             params['muscles'] = muscle
         if equipment:
             params['equipment'] = equipment
+        if search:
+            params['search'] = search
             
         return self._make_request("exercise/", params)
     
     def get_exercise_details(self, exercise_id: int) -> Optional[WgerExercise]:
-        """Get detailed information for a specific exercise"""
+        """Get comprehensive details for a specific exercise"""
         exercise_data = self._make_request(f"exercise/{exercise_id}/")
         
         if not exercise_data:
             return None
         
-        # Get additional details
-        muscles = self._get_exercise_muscles(exercise_id)
-        equipment = self._get_exercise_equipment(exercise_id)
-        instructions = self._get_exercise_instructions(exercise_id)
-        
         try:
+            # Get exercise info (descriptions, instructions)
+            exercise_info = self._get_exercise_info(exercise_id)
+            
+            # Get muscles from the exercise data itself
+            primary_muscles = []
+            secondary_muscles = []
+            
+            # Get muscle names from IDs
+            all_muscles = self.get_muscles()
+            muscle_map = {m['id']: m['name'] for m in all_muscles}
+            
+            for muscle_id in exercise_data.get('muscles', []):
+                muscle_name = muscle_map.get(muscle_id, f'Muscle #{muscle_id}')
+                primary_muscles.append(muscle_name)
+                
+            for muscle_id in exercise_data.get('muscles_secondary', []):
+                muscle_name = muscle_map.get(muscle_id, f'Muscle #{muscle_id}')
+                secondary_muscles.append(muscle_name)
+            
+            # Get equipment names from IDs
+            all_equipment = self.get_equipment()
+            equipment_map = {e['id']: e['name'] for e in all_equipment}
+            
+            equipment_names = []
+            for eq_id in exercise_data.get('equipment', []):
+                eq_name = equipment_map.get(eq_id, f'Equipment #{eq_id}')
+                equipment_names.append(eq_name)
+            
+            # Get category name
+            categories = self.get_exercise_categories()
+            category_map = {c['id']: c['name'] for c in categories}
+            category_name = category_map.get(exercise_data.get('category'), 'Unknown')
+            
             return WgerExercise(
                 id=exercise_data.get('id'),
-                name=exercise_data.get('name', ''),
-                description=exercise_data.get('description', ''),
-                category=exercise_data.get('category', {}).get('name', ''),
-                muscles=muscles.get('primary', []),
-                muscles_secondary=muscles.get('secondary', []),
-                equipment=equipment,
-                instructions=instructions,
+                name=exercise_info.get('name', f'Exercise #{exercise_id}'),
+                description=exercise_info.get('description', ''),
+                category=category_name,
+                muscles=primary_muscles,
+                muscles_secondary=secondary_muscles,
+                equipment=equipment_names,
+                instructions=exercise_info.get('instructions', []),
                 variations=exercise_data.get('variations', []),
                 license_author=exercise_data.get('license_author', ''),
-                creation_date=exercise_data.get('creation_date', '')
+                creation_date=exercise_data.get('creation_date', ''),
+                uuid=exercise_data.get('uuid'),
+                images=exercise_info.get('images', [])
             )
         except Exception as e:
-            print(f"❌ Error creating WgerExercise object: {str(e)}")
+            self.logger.error(f"❌ Error creating WgerExercise object: {str(e)}")
             return None
     
-    def _get_exercise_muscles(self, exercise_id: int) -> Dict[str, List[str]]:
-        """Get muscle groups for an exercise"""
+    def _get_exercise_info(self, exercise_id: int) -> Dict:
+        """Get exercise information including descriptions and instructions"""
         try:
-            muscles_data = self._make_request(f"exercise/{exercise_id}/muscles/")
-            primary = [m.get('name', '') for m in muscles_data.get('primary', [])]
-            secondary = [m.get('name', '') for m in muscles_data.get('secondary', [])]
-            return {'primary': primary, 'secondary': secondary}
-        except:
-            return {'primary': [], 'secondary': []}
-    
-    def _get_exercise_equipment(self, exercise_id: int) -> List[str]:
-        """Get equipment needed for an exercise"""
-        try:
-            equipment_data = self._make_request(f"exercise/{exercise_id}/equipment/")
-            return [eq.get('name', '') for eq in equipment_data.get('results', [])]
-        except:
-            return []
-    
-    def _get_exercise_instructions(self, exercise_id: int) -> List[str]:
-        """Get step-by-step instructions for an exercise"""
-        try:
-            instructions_data = self._make_request(f"exerciseinfo/{exercise_id}/")
-            return [inst.get('description', '') for inst in instructions_data.get('results', [])]
-        except:
-            return []
+            # Try to get exercise info
+            info_data = self._make_request(f"exerciseinfo/", {
+                'exercise': exercise_id,
+                'language': 2  # English
+            })
+            
+            if info_data and info_data.get('results'):
+                info = info_data['results'][0]
+                return {
+                    'name': info.get('name', ''),
+                    'description': info.get('description', ''),
+                    'instructions': [info.get('description', '')],  # Simplified
+                    'images': []  # Could be enhanced to fetch actual images
+                }
+            else:
+                return {
+                    'name': f'Exercise #{exercise_id}',
+                    'description': 'No description available',
+                    'instructions': [],
+                    'images': []
+                }
+        except Exception as e:
+            self.logger.error(f"Error getting exercise info: {e}")
+            return {
+                'name': f'Exercise #{exercise_id}',
+                'description': 'No description available',
+                'instructions': [],
+                'images': []
+            }
     
     def search_exercises(self, query: str, limit: int = 20) -> List[Dict]:
-        """Search exercises by name"""
+        """Enhanced exercise search with better relevance"""
         params = {
             'search': query,
             'limit': limit,
@@ -174,10 +298,28 @@ class WgerAPIService:
         }
         
         data = self._make_request("exercise/", params)
-        return data.get('results', [])
+        results = data.get('results', [])
+        
+        # Enhance results with additional info
+        enhanced_results = []
+        for exercise in results:
+            try:
+                # Add muscle and equipment names
+                enhanced_exercise = exercise.copy()
+                
+                # Get category name
+                categories = self.get_exercise_categories()
+                category_map = {c['id']: c['name'] for c in categories}
+                enhanced_exercise['category_name'] = category_map.get(exercise.get('category'), 'Unknown')
+                
+                enhanced_results.append(enhanced_exercise)
+            except:
+                enhanced_results.append(exercise)
+        
+        return enhanced_results
     
     def get_exercises_by_category(self, category_name: str, limit: int = 50) -> List[Dict]:
-        """Get exercises for a specific category (e.g., 'Cardio', 'Strength')"""
+        """Get exercises for a specific category with enhanced filtering"""
         # First get category ID
         categories = self.get_exercise_categories()
         category_id = None
@@ -188,61 +330,167 @@ class WgerAPIService:
                 break
         
         if not category_id:
-            print(f"❌ Category '{category_name}' not found")
+            self.logger.warning(f"❌ Category '{category_name}' not found")
             return []
         
         data = self.get_exercises(limit=limit, category=category_id)
         return data.get('results', [])
     
-    def get_martial_arts_relevant_exercises(self) -> List[Dict]:
+    def get_martial_arts_relevant_exercises(self, limit: int = 100) -> List[Dict]:
         """Get exercises particularly relevant for martial arts training"""
         martial_arts_categories = [
             'Cardio',
             'Strength', 
             'Stretching',
-            'Plyometrics'
+            'Plyometrics',
+            'Abs'  # Core strength is crucial for martial arts
         ]
         
         all_exercises = []
-        for category in martial_arts_categories:
-            exercises = self.get_exercises_by_category(category, limit=20)
-            all_exercises.extend(exercises)
         
-        # Add specific martial arts exercises if available
+        # Get exercises by category
+        for category in martial_arts_categories:
+            try:
+                exercises = self.get_exercises_by_category(category, limit=15)
+                all_exercises.extend(exercises)
+            except Exception as e:
+                self.logger.error(f"Error fetching {category} exercises: {e}")
+        
+        # Add specific martial arts exercises by keyword search
         martial_arts_keywords = [
             'kick', 'punch', 'balance', 'flexibility', 'core', 
-            'agility', 'coordination', 'reaction', 'speed'
+            'agility', 'coordination', 'speed', 'explosive',
+            'functional', 'bodyweight', 'plyometric'
         ]
         
         for keyword in martial_arts_keywords:
-            keyword_exercises = self.search_exercises(keyword, limit=10)
-            all_exercises.extend(keyword_exercises)
+            try:
+                keyword_exercises = self.search_exercises(keyword, limit=8)
+                all_exercises.extend(keyword_exercises)
+            except Exception as e:
+                self.logger.error(f"Error searching for {keyword} exercises: {e}")
         
-        # Remove duplicates based on exercise ID
+        # Remove duplicates based on exercise ID and limit results
         seen_ids = set()
         unique_exercises = []
         for exercise in all_exercises:
-            if exercise.get('id') not in seen_ids:
+            exercise_id = exercise.get('id')
+            if exercise_id and exercise_id not in seen_ids:
                 unique_exercises.append(exercise)
-                seen_ids.add(exercise.get('id'))
+                seen_ids.add(exercise_id)
+                
+                if len(unique_exercises) >= limit:
+                    break
         
-        return unique_exercises[:100]  # Limit to 100 most relevant
+        self.logger.info(f"Found {len(unique_exercises)} unique martial arts relevant exercises")
+        return unique_exercises
+    
+    def get_equipment_exercises(self, equipment_name: str, limit: int = 30) -> List[Dict]:
+        """Get exercises that use specific equipment"""
+        # Find equipment ID
+        all_equipment = self.get_equipment()
+        equipment_id = None
+        
+        for eq in all_equipment:
+            if equipment_name.lower() in eq.get('name', '').lower():
+                equipment_id = eq.get('id')
+                break
+        
+        if not equipment_id:
+            self.logger.warning(f"Equipment '{equipment_name}' not found")
+            return []
+        
+        data = self.get_exercises(limit=limit, equipment=equipment_id)
+        return data.get('results', [])
+    
+    def get_muscle_exercises(self, muscle_name: str, limit: int = 30) -> List[Dict]:
+        """Get exercises that target a specific muscle"""
+        # Find muscle ID
+        all_muscles = self.get_muscles()
+        muscle_id = None
+        
+        for muscle in all_muscles:
+            if muscle_name.lower() in muscle.get('name', '').lower():
+                muscle_id = muscle.get('id')
+                break
+        
+        if not muscle_id:
+            self.logger.warning(f"Muscle '{muscle_name}' not found")
+            return []
+        
+        data = self.get_exercises(limit=limit, muscle=muscle_id)
+        return data.get('results', [])
+    
+    def get_api_stats(self) -> Dict:
+        """Get statistics about the wger API data"""
+        try:
+            categories = self.get_exercise_categories()
+            muscles = self.get_muscles()
+            equipment = self.get_equipment()
+            
+            # Get total exercise count
+            exercises_data = self._make_request("exercise/", {'limit': 1})
+            total_exercises = exercises_data.get('count', 0)
+            
+            return {
+                'total_exercises': total_exercises,
+                'total_categories': len(categories),
+                'total_muscles': len(muscles),
+                'total_equipment': len(equipment),
+                'categories': [c['name'] for c in categories],
+                'cache_size': len(self.cache)
+            }
+        except Exception as e:
+            self.logger.error(f"Error getting API stats: {e}")
+            return {}
     
     def test_connection(self) -> Dict:
-        """Test the connection to wger API"""
+        """Enhanced connection test with more comprehensive checks"""
         try:
-            data = self._make_request("info/")
+            # Test basic connectivity
+            start_time = time.time()
+            
+            # Test different endpoints
+            tests = {
+                'categories': self.get_exercise_categories(),
+                'muscles': self.get_muscles(),
+                'equipment': self.get_equipment(),
+                'exercises': self.get_exercises(limit=5)
+            }
+            
+            response_time = time.time() - start_time
+            
+            # Check if all tests passed
+            all_passed = all(len(test_data) > 0 if isinstance(test_data, list) 
+                           else test_data.get('results', []) for test_data in tests.values())
+            
+            stats = self.get_api_stats()
+            
             return {
-                'success': True,
-                'message': 'Successfully connected to wger API',
-                'api_info': data
+                'success': all_passed,
+                'message': 'Successfully connected to wger API' if all_passed else 'Partial connection issues',
+                'response_time': round(response_time, 2),
+                'api_stats': stats,
+                'test_results': {
+                    'categories_count': len(tests['categories']),
+                    'muscles_count': len(tests['muscles']),
+                    'equipment_count': len(tests['equipment']),
+                    'exercises_count': len(tests['exercises'].get('results', []))
+                }
             }
         except Exception as e:
             return {
                 'success': False,
                 'message': f'Failed to connect to wger API: {str(e)}',
-                'api_info': {}
+                'response_time': 0,
+                'api_stats': {},
+                'test_results': {}
             }
+    
+    def clear_cache(self):
+        """Clear the API cache"""
+        self.cache.clear()
+        self.logger.info("API cache cleared")
 
 # Singleton instance
 wger_service = WgerAPIService()

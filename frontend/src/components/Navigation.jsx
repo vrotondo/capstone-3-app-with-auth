@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
     Menu, X, Home, Calendar, BarChart3, User, LogOut,
-    BookOpen, Star, Target, Dumbbell
+    BookOpen, Star, Target, Dumbbell, Activity
 } from 'lucide-react';
 
 import { useAuth } from '../context/AuthContext';
@@ -51,6 +51,12 @@ const Navigation = () => {
             href: '/techniques',
             icon: BookOpen,
             description: 'Browse martial arts techniques'
+        },
+        {
+            name: 'Exercise Database',
+            href: '/exercises',
+            icon: Dumbbell,
+            description: 'Browse workout exercises'
         }
     ];
 
