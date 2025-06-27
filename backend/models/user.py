@@ -9,6 +9,7 @@ def create_models(db):
     
     class User(db.Model):
         __tablename__ = 'users'
+        __table_args__ = {'extend_existing': True}  # ADDED: This fixes the duplicate table error
         
         id = db.Column(db.Integer, primary_key=True)
         email = db.Column(db.String(120), unique=True, nullable=False, index=True)
@@ -177,6 +178,7 @@ def create_models(db):
 
     class UserPreferences(db.Model):
         __tablename__ = 'user_preferences'
+        __table_args__ = {'extend_existing': True}  # ADDED: This fixes the duplicate table error
         
         id = db.Column(db.Integer, primary_key=True)
         user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
@@ -255,6 +257,7 @@ def create_models(db):
 
     class TrainingSession(db.Model):
         __tablename__ = 'training_sessions'
+        __table_args__ = {'extend_existing': True}  # ADDED: This fixes the duplicate table error
         
         id = db.Column(db.Integer, primary_key=True)
         user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
@@ -358,8 +361,11 @@ def create_models(db):
         created_at = db.Column(db.DateTime, default=datetime.utcnow)
         updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
         
-        # Ensure unique technique per user per style
-        __table_args__ = (db.UniqueConstraint('user_id', 'technique_name', 'style', name='unique_user_technique_style'),)
+        # FIXED: Ensure unique technique per user per style AND allow extending table
+        __table_args__ = (
+            db.UniqueConstraint('user_id', 'technique_name', 'style', name='unique_user_technique_style'),
+            {'extend_existing': True}  # ADDED: This fixes the duplicate table error
+        )
         
         # Relationship
         user = db.relationship('User', backref='technique_progress')

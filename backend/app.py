@@ -24,7 +24,7 @@ def create_app():
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///dojotracker.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['JWT_SECRET_KEY'] = 'jwt-secret-change-in-production'
-    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=24)
+    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=7)
     app.config['JWT_ALGORITHM'] = 'HS256'
     
     # Important: These settings help with JWT token handling
@@ -94,13 +94,42 @@ def create_app():
          supports_credentials=True,
          expose_headers=['Authorization'])
 
-    # Create models
-    from models.user import create_models
-    User, TrainingSession, TechniqueProgress = create_models(db)
+    # Create models - FIXED: Handle correct number of returned models
+    print("📦 Loading user models...")
+    try:
+        from models.user import create_models
+        models = create_models(db)
+        print(f"🔍 create_models returned {len(models)} models")
+        
+        # Handle the correct number of models returned
+        if len(models) == 3:
+            User, TrainingSession, TechniqueProgress = models
+            UserPreferences = None
+        elif len(models) == 4:
+            User, TrainingSession, TechniqueProgress, UserPreferences = models
+        else:
+            # Safe fallback - use positional indexing
+            User = models[0]
+            TrainingSession = models[1] 
+            TechniqueProgress = models[2]
+            UserPreferences = models[3] if len(models) > 3 else None
+            
+        print(f"✅ User models loaded: User, TrainingSession, TechniqueProgress" + 
+              (", UserPreferences" if UserPreferences else ""))
+              
+    except Exception as e:
+        print(f"❌ Error loading user models: {e}")
+        raise
 
     # Create technique library models
-    from models.technique_library import create_technique_models
-    TechniqueLibrary, UserTechniqueBookmark, TechniqueCategory = create_technique_models(db)
+    print("📦 Loading technique library models...")
+    try:
+        from models.technique_library import create_technique_models
+        TechniqueLibrary, UserTechniqueBookmark, TechniqueCategory = create_technique_models(db)
+        print("✅ Technique library models loaded: TechniqueLibrary, UserTechniqueBookmark, TechniqueCategory")
+    except Exception as e:
+        print(f"❌ Error loading technique library models: {e}")
+        raise
 
     # Make models available globally in the app
     app.User = User
@@ -109,15 +138,55 @@ def create_app():
     app.TechniqueLibrary = TechniqueLibrary
     app.UserTechniqueBookmark = UserTechniqueBookmark
     app.TechniqueCategory = TechniqueCategory
+    
+    # Add UserPreferences if it exists
+    if UserPreferences:
+        app.UserPreferences = UserPreferences
 
     # Register blueprints
-    from routes.auth import auth_bp
-    from routes.training import training_bp
-    from routes.techniques import techniques_bp
+    print("🔗 Registering blueprints...")
+    
+    try:
+        from routes.auth import auth_bp
+        print("✅ Auth blueprint imported")
+    except Exception as e:
+        print(f"❌ Failed to import auth blueprint: {e}")
+        raise
+    
+    try:
+        from routes.training import training_bp
+        print("✅ Training blueprint imported")
+    except Exception as e:
+        print(f"❌ Failed to import training blueprint: {e}")
+        raise
+    
+    try:
+        from routes.techniques import techniques_bp
+        print("✅ Techniques blueprint imported")
+    except Exception as e:
+        print(f"❌ Failed to import techniques blueprint: {e}")
+        raise
+    
+    try:
+        from routes.user import user_bp
+        print("✅ User blueprint imported")
+    except Exception as e:
+        print(f"❌ Failed to import user blueprint: {e}")
+        print("❌ Make sure you created backend/routes/user.py")
+        # Continue without user blueprint for now
+        user_bp = None
     
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(training_bp, url_prefix='/api/training')
     app.register_blueprint(techniques_bp, url_prefix='/api/techniques')
+    
+    if user_bp:
+        app.register_blueprint(user_bp, url_prefix='/api/user')
+        print("✅ User blueprint registered at /api/user")
+    else:
+        print("❌ User blueprint not registered")
+        
+    print("✅ Blueprints registration complete")
 
     # Basic routes
     @app.route('/')
@@ -156,6 +225,21 @@ def create_app():
             'jwt_header_type': app.config.get('JWT_HEADER_TYPE'),
             'jwt_algorithm': app.config.get('JWT_ALGORITHM')
         })
+    
+    @app.route('/api/debug/routes')
+    def debug_routes():
+        """Debug endpoint to see all registered routes"""
+        routes = []
+        for rule in app.url_map.iter_rules():
+            routes.append({
+                'endpoint': rule.endpoint,
+                'methods': list(rule.methods),
+                'url': rule.rule
+            })
+        return jsonify({
+            'total_routes': len(routes),
+            'routes': sorted(routes, key=lambda x: x['url'])
+        })
 
     return app
 
@@ -169,24 +253,30 @@ if __name__ == '__main__':
             db.create_all()
             print("✅ Database tables created successfully")
             
-            # Check if we have any existing data
-            from models.user import create_models
-            User, TrainingSession, TechniqueProgress = create_models(db)
+            # FIXED: Safe database statistics that won't fail if schema is wrong
+            User = app.User
+            TrainingSession = app.TrainingSession
+            TechniqueProgress = app.TechniqueProgress
+            TechniqueLibrary = app.TechniqueLibrary
             
-            from models.technique_library import create_technique_models
-            TechniqueLibrary, UserTechniqueBookmark, TechniqueCategory = create_technique_models(db)
-            
-            user_count = User.query.count()
-            session_count = TrainingSession.query.count()
-            technique_count = TechniqueLibrary.query.count()
-            
-            print(f"📊 Current database state:")
-            print(f"   Users: {user_count}")
-            print(f"   Training Sessions: {session_count}")
-            print(f"   Techniques: {technique_count}")
+            # Try to get counts, but handle errors gracefully
+            try:
+                user_count = User.query.count()
+                session_count = TrainingSession.query.count()
+                technique_count = TechniqueLibrary.query.count()
+                
+                print(f"📊 Current database state:")
+                print(f"   Users: {user_count}")
+                print(f"   Training Sessions: {session_count}")
+                print(f"   Techniques: {technique_count}")
+            except Exception as count_error:
+                print(f"ℹ️ Could not get database counts (normal for new database): {count_error}")
+                print("📊 Database appears to be freshly created")
             
         except Exception as e:
             print(f"❌ Database error: {str(e)}")
+            import traceback
+            traceback.print_exc()
     
     print("🚀 Starting server...")
     print("📍 Access at: http://localhost:8000")

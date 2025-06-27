@@ -300,3 +300,28 @@ def test_jwt():
     except Exception as e:
         print(f"JWT test error: {str(e)}")
         return jsonify({'message': f'JWT test failed: {str(e)}'}), 500
+    
+@auth_bp.route('/profile', methods=['GET'])
+@jwt_required()
+def get_user_profile():
+    """Get user profile - alias for /me endpoint"""
+    return get_current_user()
+
+@auth_bp.route('/profile', methods=['PUT'])
+@jwt_required()
+def update_user_profile():
+    """Update user profile - alias for /me endpoint"""
+    return update_current_user()
+
+# Also add this route to match frontend expectations
+@auth_bp.route('/user/profile', methods=['GET'])
+@jwt_required()
+def get_user_profile_alt():
+    """Alternative profile endpoint to match frontend"""
+    return get_current_user()
+
+@auth_bp.route('/user/profile', methods=['PUT'])
+@jwt_required()
+def update_user_profile_alt():
+    """Alternative profile update endpoint to match frontend"""
+    return update_current_user()
