@@ -107,6 +107,15 @@ const AppContent = () => {
             path="/techniques"
             element={
               <Layout>
+                <Techniques />
+              </Layout>
+            }
+          />
+
+          <Route
+            path="/exercises"
+            element={
+              <Layout>
                 <Exercises />
               </Layout>
             }
@@ -141,15 +150,6 @@ const AppContent = () => {
                   <MyTechniques />
                 </Layout>
               </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/exercises"
-            element={
-              <Layout>
-                <Exercises />
-              </Layout>
             }
           />
 

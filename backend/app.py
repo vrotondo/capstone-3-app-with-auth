@@ -163,10 +163,16 @@ def create_app():
     
     # Import all blueprints with error handling
     try:
+        print("🔍 Attempting to import auth blueprint...")
         from routes.auth import auth_bp
-        print("✅ Auth blueprint imported")
+        print("✅ Auth blueprint imported successfully")
+        print(f"🔍 Auth blueprint type: {type(auth_bp)}")
+        print(f"🔍 Auth blueprint name: {auth_bp.name}")
     except Exception as e:
         print(f"❌ Failed to import auth blueprint: {e}")
+        print(f"🔍 Error type: {type(e).__name__}")
+        import traceback
+        traceback.print_exc()
         auth_bp = None
     
     try:
@@ -208,10 +214,11 @@ def create_app():
 
     # Register all blueprints with proper checks
     if auth_bp:
+        print(f"🔍 Registering auth blueprint: {auth_bp}")
         app.register_blueprint(auth_bp, url_prefix='/api/auth')
         print("✅ Auth blueprint registered at /api/auth")
     else:
-        print("❌ Auth blueprint not registered")
+        print("❌ Auth blueprint is None - cannot register")
     
     if training_bp:
         app.register_blueprint(training_bp, url_prefix='/api/training')
