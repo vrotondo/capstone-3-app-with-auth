@@ -161,12 +161,20 @@ def create_app():
     # Register blueprints - SINGLE REGISTRATION ONLY
     print("🔗 Registering blueprints...")
     
+    # Import all blueprints with error handling
     try:
         from routes.auth import auth_bp
         print("✅ Auth blueprint imported")
     except Exception as e:
         print(f"❌ Failed to import auth blueprint: {e}")
-        raise
+        auth_bp = None
+    
+    try:
+        from routes.training import training_bp
+        print("✅ Training blueprint imported")
+    except Exception as e:
+        print(f"❌ Failed to import training blueprint: {e}")
+        training_bp = None
     
     try:
         from routes.wger import wger_bp
@@ -180,7 +188,7 @@ def create_app():
         print("✅ Techniques blueprint imported")
     except Exception as e:
         print(f"❌ Failed to import techniques blueprint: {e}")
-        raise
+        techniques_bp = None
     
     try:
         from routes.user import user_bp
@@ -198,14 +206,30 @@ def create_app():
         print("❌ Make sure you created backend/routes/exercises.py")
         exercises_bp = None
 
+    # Register all blueprints with proper checks
+    if auth_bp:
+        app.register_blueprint(auth_bp, url_prefix='/api/auth')
+        print("✅ Auth blueprint registered at /api/auth")
+    else:
+        print("❌ Auth blueprint not registered")
+    
+    if training_bp:
+        app.register_blueprint(training_bp, url_prefix='/api/training')
+        print("✅ Training blueprint registered at /api/training")
+    else:
+        print("❌ Training blueprint not registered")
+    
+    if techniques_bp:
+        app.register_blueprint(techniques_bp, url_prefix='/api/techniques')
+        print("✅ Techniques blueprint registered at /api/techniques")
+    else:
+        print("❌ Techniques blueprint not registered")
+    
     if wger_bp:
         app.register_blueprint(wger_bp, url_prefix='/api/wger')
         print("✅ wger blueprint registered at /api/wger")
-    
-    # Register all blueprints (only once!)
-    app.register_blueprint(auth_bp, url_prefix='/api/auth')
-    app.register_blueprint(training_bp, url_prefix='/api/training')
-    app.register_blueprint(techniques_bp, url_prefix='/api/techniques')
+    else:
+        print("❌ wger blueprint not registered")
     
     if user_bp:
         app.register_blueprint(user_bp, url_prefix='/api/user')
@@ -228,12 +252,29 @@ def create_app():
             'message': 'DojoTracker API is running!',
             'version': '1.0.0',
             'status': 'healthy',
-            'features': ['Training Sessions', 'Technique Library', 'User Authentication', 'Exercise Database']
+            'features': ['Training Sessions', 'Technique Library', 'User Authentication', 'Exercise Database', 'wger Integration']
         })
 
     @app.route('/api/health')
     def health():
         return jsonify({'status': 'healthy', 'message': 'API is working'})
+
+    # Add wger test route
+    @app.route('/api/wger/test')
+    def test_wger_integration():
+        """Quick test endpoint for wger integration"""
+        try:
+            from services.wger_api import wger_service
+            result = wger_service.test_connection()
+            return jsonify({
+                'wger_integration': True,
+                'connection_test': result
+            })
+        except Exception as e:
+            return jsonify({
+                'wger_integration': False,
+                'error': str(e)
+            }), 500
 
     # Enhanced error handlers
     @app.errorhandler(404)
@@ -321,6 +362,7 @@ if __name__ == '__main__':
     print("🧪 Test auth at: http://localhost:8000/api/auth/test")
     print("🥋 Test techniques at: http://localhost:8000/api/techniques/test")
     print("💪 Test exercises at: http://localhost:8000/api/exercises/test")
+    print("🌐 Test wger at: http://localhost:8000/api/wger/test")
     print("🔍 JWT debug at: http://localhost:8000/api/debug/jwt")
     print("🗺️ All routes at: http://localhost:8000/api/debug/routes")
     print("=" * 50)

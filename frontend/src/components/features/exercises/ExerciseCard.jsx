@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import wgerService from '../../services/wgerService';
+import { useAuth } from "../../../context/AuthContext";
+import wgerService from '../../../services/wgerService';
 
 const ExerciseCard = ({ exercise, difficulty, categoryIcon }) => {
     const { isAuthenticated } = useAuth();
@@ -138,3 +138,5 @@ const ExerciseCard = ({ exercise, difficulty, categoryIcon }) => {
         </div>
     );
 };
+
+export default ExerciseCard;

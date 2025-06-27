@@ -7,7 +7,7 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'services'))
 
 try:
-    from wger_api import wger_service
+    from services.wger_api import wger_service
     print("✅ Successfully imported wger_service")
 except ImportError as e:
     print(f"❌ Failed to import wger_service: {e}")
