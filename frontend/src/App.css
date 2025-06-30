@@ -16,6 +16,7 @@
 @import './styles/components/exercises.css';
 @import './styles/pages/exercises.css';
 @import './styles/components/loading.css';
+@import './styles/components/navigation.css';
 
 .technique-description,
 .enhanced-technique-name,
