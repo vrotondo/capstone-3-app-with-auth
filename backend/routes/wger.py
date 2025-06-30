@@ -3,7 +3,14 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 import sys
 import os
 
-# Add the services directory to Python path
+try:
+    from services.wger_api import WgerAPIService
+    wger_service = WgerAPIService(api_key=os.getenv('WGER_API_KEY'))
+    print("✅ Successfully imported wger_service with API key")
+except ImportError as e:
+    print(f"❌ Failed to import wger_service: {e}")
+    wger_service = None
+
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'services'))
 
 try:

@@ -1,3 +1,4 @@
+import os
 import requests
 import json
 from typing import Dict, List, Optional
@@ -26,14 +27,25 @@ class WgerExercise:
 class WgerAPIService:
     """Enhanced service for interacting with wger Exercise Database API"""
     
-    def __init__(self):
+    def __init__(self, api_key=None):
+        # Fix: Add missing import and parameter
         self.base_url = "https://wger.de/api/v2"
+        self.api_key = api_key or os.getenv('WGER_API_KEY')
         self.session = requests.Session()
         self.session.headers.update({
             'User-Agent': 'DojoTracker/1.0 (Martial Arts Training App)',
             'Accept': 'application/json',
             'Content-Type': 'application/json'
         })
+
+        # Fix: Add API key authentication
+        if self.api_key:
+            self.session.headers.update({
+                'Authorization': f'Token {self.api_key}' 
+            })
+            print(f"🔑 wger API key configured")
+        else:
+            print("⚠️ No wger API key - using public endpoints only")
         
         # Enhanced cache with longer duration for static data
         self.cache = {}
@@ -338,37 +350,63 @@ class WgerAPIService:
     
     def get_martial_arts_relevant_exercises(self, limit: int = 100) -> List[Dict]:
         """Get exercises particularly relevant for martial arts training"""
+        # First, let's get all available categories to see what's actually there
+        all_categories = self.get_exercise_categories()
+        print("🔍 Available categories:")
+        for cat in all_categories:
+            print(f"   - {cat.get('name', 'Unknown')}")
+        
+        # Use category names that actually exist in wger
+        # These are more common wger category names
         martial_arts_categories = [
-            'Cardio',
-            'Strength', 
-            'Stretching',
-            'Plyometrics',
-            'Abs'  # Core strength is crucial for martial arts
+            'Arms',      # Usually exists
+            'Legs',      # Usually exists  
+            'Abs',       # Usually exists
+            'Back',      # Usually exists
+            'Chest',     # Usually exists
+            'Shoulders', # Usually exists
+            'Cardio'     # If it exists
         ]
         
         all_exercises = []
         
-        # Get exercises by category
+        # Get exercises by category - only use categories that exist
         for category in martial_arts_categories:
             try:
-                exercises = self.get_exercises_by_category(category, limit=15)
-                all_exercises.extend(exercises)
+                exercises = self.get_exercises_by_category(category, limit=10)
+                if exercises:
+                    print(f"✅ Found {len(exercises)} exercises in category: {category}")
+                    all_exercises.extend(exercises)
+                else:
+                    print(f"⚠️ No exercises found in category: {category}")
             except Exception as e:
-                self.logger.error(f"Error fetching {category} exercises: {e}")
+                print(f"❌ Error fetching {category} exercises: {e}")
+        
+        # If no category exercises found, get some general exercises
+        if not all_exercises:
+            print("⚠️ No category exercises found, getting general exercises")
+            try:
+                general_exercises = self.get_exercises(limit=50)
+                if general_exercises.get('results'):
+                    all_exercises = general_exercises['results']
+                    print(f"✅ Got {len(all_exercises)} general exercises")
+            except Exception as e:
+                print(f"❌ Error getting general exercises: {e}")
         
         # Add specific martial arts exercises by keyword search
         martial_arts_keywords = [
-            'kick', 'punch', 'balance', 'flexibility', 'core', 
-            'agility', 'coordination', 'speed', 'explosive',
-            'functional', 'bodyweight', 'plyometric'
+            'push', 'pull', 'squat', 'lunge', 'plank',
+            'burpee', 'jump', 'core', 'balance'
         ]
         
         for keyword in martial_arts_keywords:
             try:
-                keyword_exercises = self.search_exercises(keyword, limit=8)
-                all_exercises.extend(keyword_exercises)
+                keyword_exercises = self.search_exercises(keyword, limit=5)
+                if keyword_exercises:
+                    print(f"✅ Found {len(keyword_exercises)} exercises for keyword: {keyword}")
+                    all_exercises.extend(keyword_exercises)
             except Exception as e:
-                self.logger.error(f"Error searching for {keyword} exercises: {e}")
+                print(f"❌ Error searching for {keyword} exercises: {e}")
         
         # Remove duplicates based on exercise ID and limit results
         seen_ids = set()
@@ -382,7 +420,7 @@ class WgerAPIService:
                 if len(unique_exercises) >= limit:
                     break
         
-        self.logger.info(f"Found {len(unique_exercises)} unique martial arts relevant exercises")
+        print(f"✅ Final result: {len(unique_exercises)} unique martial arts relevant exercises")
         return unique_exercises
     
     def get_equipment_exercises(self, equipment_name: str, limit: int = 30) -> List[Dict]:
@@ -492,5 +530,5 @@ class WgerAPIService:
         self.cache.clear()
         self.logger.info("API cache cleared")
 
-# Singleton instance
+# Fix: Create singleton instance with proper initialization
 wger_service = WgerAPIService()
