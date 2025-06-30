@@ -6,7 +6,7 @@ class WgerService {
     constructor() {
         this.api = axios.create({
             baseURL: `${API_BASE_URL}/wger`,
-            timeout: 15000, // Increased timeout
+            timeout: 30000, // Increased from 15000 to 30000 (30 seconds)
         });
 
         // Add auth interceptor with wger API key

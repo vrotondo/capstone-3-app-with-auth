@@ -6,11 +6,15 @@ from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
 from datetime import timedelta
+from dotenv import load_dotenv
+
+load_dotenv()
 
 print("=" * 50)
 print("🥋 DojoTracker Starting...")
 print("📁 Current directory:", os.getcwd())
 print("🐍 Python version:", sys.version)
+print(f"🔍 Loaded WGER_API_KEY: {'YES' if os.getenv('WGER_API_KEY') else 'NO'}")
 
 # Initialize extensions
 db = SQLAlchemy()

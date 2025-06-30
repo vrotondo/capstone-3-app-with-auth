@@ -131,6 +131,15 @@ def get_exercises():
             search=search
         )
         
+        # Add debugging
+        print(f"🔍 Raw exercises_data keys: {exercises_data.keys()}")
+        print(f"🔍 Number of exercises: {len(exercises_data.get('results', []))}")
+        
+        # Check if any exercises were enhanced properly
+        if exercises_data.get('results'):
+            first_exercise = exercises_data['results'][0]
+            print(f"🔍 First exercise sample: {first_exercise}")
+        
         return jsonify({
             'success': True,
             'count': exercises_data.get('count', 0),
@@ -140,7 +149,9 @@ def get_exercises():
         })
         
     except Exception as e:
-        print(f"❌ Error fetching exercises: {str(e)}")
+        print(f"❌ Error in get_exercises route: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             'success': False,
             'error': str(e),
