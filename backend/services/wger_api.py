@@ -204,43 +204,51 @@ class WgerAPIService:
         exercise_description = exercise.get('description', 'No description available')
         enhanced['description'] = exercise_description
         
-        # Resolve category ID to name
+        # Resolve category ID to name (avoid double-enhancement)
         category_id = exercise.get('category')
-        if category_id and self._category_map:
-            enhanced['category'] = self._category_map.get(category_id, f'Category {category_id}')
+        if isinstance(category_id, int) and category_id in self._category_map:
+            enhanced['category'] = self._category_map[category_id]
+            enhanced['category_name'] = self._category_map[category_id]
         else:
-            enhanced['category'] = 'Unknown'
-        enhanced['category_name'] = enhanced['category']
+            # Already enhanced or unknown
+            enhanced['category'] = exercise.get('category', 'Unknown')
+            enhanced['category_name'] = exercise.get('category', 'Unknown')
         
-        # Resolve muscle IDs to names
+        # Resolve muscle IDs to names (avoid double-enhancement)
         muscle_ids = exercise.get('muscles', [])
-        if muscle_ids and self._muscle_map:
+        if muscle_ids and all(isinstance(m_id, int) for m_id in muscle_ids):
+            # These are still IDs, resolve them
             enhanced['muscles'] = [
                 self._muscle_map.get(muscle_id, f'Muscle {muscle_id}')
                 for muscle_id in muscle_ids
             ]
         else:
-            enhanced['muscles'] = []
+            # Already enhanced or empty
+            enhanced['muscles'] = muscle_ids
         
-        # Resolve secondary muscle IDs to names
+        # Resolve secondary muscle IDs to names (avoid double-enhancement)
         secondary_muscle_ids = exercise.get('muscles_secondary', [])
-        if secondary_muscle_ids and self._muscle_map:
+        if secondary_muscle_ids and all(isinstance(m_id, int) for m_id in secondary_muscle_ids):
+            # These are still IDs, resolve them
             enhanced['muscles_secondary'] = [
                 self._muscle_map.get(muscle_id, f'Muscle {muscle_id}')
                 for muscle_id in secondary_muscle_ids
             ]
         else:
-            enhanced['muscles_secondary'] = []
+            # Already enhanced or empty
+            enhanced['muscles_secondary'] = secondary_muscle_ids
         
-        # Resolve equipment IDs to names
+        # Resolve equipment IDs to names (avoid double-enhancement)
         equipment_ids = exercise.get('equipment', [])
-        if equipment_ids and self._equipment_map:
+        if equipment_ids and all(isinstance(eq_id, int) for eq_id in equipment_ids):
+            # These are still IDs, resolve them
             enhanced['equipment'] = [
                 self._equipment_map.get(eq_id, f'Equipment {eq_id}')
                 for eq_id in equipment_ids
             ]
         else:
-            enhanced['equipment'] = []
+            # Already enhanced or empty
+            enhanced['equipment'] = equipment_ids
         
         # Skip exercise info API for now since it's causing issues
         enhanced['instructions'] = []

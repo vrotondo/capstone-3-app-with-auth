@@ -1,396 +1,420 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../../context/AuthContext';
 import wgerService from '../../../services/wgerService';
+import workoutService from '../../../services/workoutService';
 import LoadingSpinner from '../../common/LoadingSpinner';
-import ExerciseCard from './ExerciseCard';
-import ExerciseFilters from './ExerciseFilters';
 
 const ExerciseBrowser = () => {
+    const { isAuthenticated } = useAuth();
     const [exercises, setExercises] = useState([]);
-    const [categories, setCategories] = useState([]);
-    const [muscles, setMuscles] = useState([]);
-    const [equipment, setEquipment] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [searchLoading, setSearchLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [filters, setFilters] = useState({
-        category: '',
-        muscle: '',
-        equipment: '',
-        difficulty: ''
-    });
-    const [currentPage, setCurrentPage] = useState(1);
-    const [totalCount, setTotalCount] = useState(0);
-    const [hasMore, setHasMore] = useState(false);
+    const [favorites, setFavorites] = useState({});
+    const [workoutPlans, setWorkoutPlans] = useState([]);
+    const [showWorkoutModal, setShowWorkoutModal] = useState(false);
+    const [selectedExercise, setSelectedExercise] = useState(null);
 
-    // Load initial data
     useEffect(() => {
-        loadInitialData();
-    }, []);
-
-    // Load exercises when filters change
-    useEffect(() => {
-        if (!loading) {
-            setCurrentPage(1);
-            loadExercises(true);
+        loadExercises();
+        if (isAuthenticated) {
+            loadFavorites();
+            loadWorkoutPlans();
         }
-    }, [filters, searchQuery]);
+    }, [isAuthenticated]);
 
-    const loadInitialData = async () => {
+    const loadExercises = async () => {
         try {
             setLoading(true);
             setError(null);
-            console.log('🔄 Loading initial data...');
 
-            // Load filter options and initial exercises in parallel
-            const [categoriesRes, musclesRes, equipmentRes] = await Promise.all([
-                wgerService.getCategories(),
-                wgerService.getMuscles(),
-                wgerService.getEquipment()
-            ]);
+            console.log('🔄 Loading exercises...');
+            const response = await wgerService.getMartialArtsExercises(50);
+            console.log('📊 Response:', response);
 
-            console.log('📂 Categories response:', categoriesRes);
-            console.log('💪 Muscles response:', musclesRes);
-            console.log('🏋️ Equipment response:', equipmentRes);
+            if (response.success && response.exercises) {
+                // Create better exercise names based on available data
+                const enhancedExercises = response.exercises.map(exercise => ({
+                    ...exercise,
+                    displayName: generateBetterName(exercise),
+                    displayDescription: generateBetterDescription(exercise)
+                }));
 
-            if (categoriesRes.success) {
-                setCategories(categoriesRes.categories || []);
-                console.log('✅ Categories loaded:', categoriesRes.categories?.length || 0);
+                setExercises(enhancedExercises);
+                console.log('✅ Set exercises:', enhancedExercises.length);
+            } else {
+                setError('Failed to load exercises');
             }
-            if (musclesRes.success) {
-                setMuscles(musclesRes.muscles || []);
-                console.log('✅ Muscles loaded:', musclesRes.muscles?.length || 0);
-            }
-            if (equipmentRes.success) {
-                setEquipment(equipmentRes.equipment || []);
-                console.log('✅ Equipment loaded:', equipmentRes.equipment?.length || 0);
-            }
-
-            // Load initial exercises with fallback strategy
-            await loadInitialExercises();
-
         } catch (err) {
-            console.error('❌ Error loading initial data:', err);
-            setError(`Failed to load exercise data: ${err.message}`);
+            console.error('❌ Error:', err);
+            setError(err.message);
         } finally {
             setLoading(false);
         }
     };
 
-    const loadInitialExercises = async () => {
+    const loadFavorites = async () => {
         try {
-            console.log('🏃 Loading initial exercises with fallback strategy...');
-
-            // Try martial arts exercises first (simplified version should be faster)
-            try {
-                console.log('🥋 Trying martial arts exercises...');
-                const martialArtsResponse = await wgerService.getMartialArtsExercises(50);
-                console.log('🥋 Martial arts response:', martialArtsResponse);
-
-                if (martialArtsResponse.success && martialArtsResponse.exercises?.length > 0) {
-                    const exerciseList = martialArtsResponse.exercises;
-                    console.log('✅ Martial arts exercises loaded:', exerciseList.length);
-                    await processAndSetExercises(exerciseList, martialArtsResponse.count);
-                    return; // Success - exit here
-                } else {
-                    console.log('⚠️ Martial arts exercises failed, trying regular exercises...');
-                }
-            } catch (martialArtsError) {
-                console.log('⚠️ Martial arts exercises errored, trying regular exercises...', martialArtsError.message);
+            const response = await workoutService.getFavorites();
+            if (response.success) {
+                const favoriteMap = {};
+                response.favorites.forEach(fav => {
+                    favoriteMap[fav.exercise_id] = true;
+                });
+                setFavorites(favoriteMap);
             }
-
-            // Fallback to regular exercises
-            console.log('🔄 Loading regular exercises as fallback...');
-            const regularResponse = await wgerService.getExercises({ limit: 50 });
-            console.log('📊 Regular exercises response:', regularResponse);
-
-            if (regularResponse.success && regularResponse.exercises?.length > 0) {
-                const exerciseList = regularResponse.exercises;
-                console.log('✅ Regular exercises loaded:', exerciseList.length);
-                await processAndSetExercises(exerciseList, regularResponse.count);
-            } else {
-                throw new Error('No exercises available from any endpoint');
-            }
-
-        } catch (err) {
-            console.error('❌ Error loading initial exercises:', err);
-            throw new Error(`Failed to load exercises: ${err.message}`);
+        } catch (error) {
+            console.error('Error loading favorites:', error);
         }
     };
 
-    const processAndSetExercises = async (exerciseList, count) => {
-        console.log('🔄 Processing exercises for display...', exerciseList.length);
-        console.log('📝 First exercise example:', exerciseList[0]);
-
-        // Process exercises to ensure they have proper display format
-        const processedExercises = exerciseList.map(exercise => {
-            const processed = {
-                id: exercise.id,
-                name: exercise.name || `Exercise #${exercise.id}`,
-                description: exercise.description || 'No description available',
-                category: exercise.category_name || exercise.category || 'Unknown',
-                muscles: Array.isArray(exercise.muscles) ? exercise.muscles : [],
-                muscles_secondary: Array.isArray(exercise.muscles_secondary) ? exercise.muscles_secondary : [],
-                equipment: Array.isArray(exercise.equipment) ? exercise.equipment : [],
-                difficulty: getDifficulty(exercise),
-                categoryIcon: getCategoryIcon(exercise.category_name || exercise.category)
-            };
-
-            console.log(`📝 Processed exercise ${processed.id}:`, processed);
-            return processed;
-        });
-
-        setExercises(processedExercises);
-        setTotalCount(count || processedExercises.length);
-        setHasMore(false); // For now, don't implement pagination
-
-        console.log('✅ Final processed exercises set:', processedExercises.length);
-    };
-
-    const loadExercises = async (reset = false) => {
+    const loadWorkoutPlans = async () => {
         try {
-            setSearchLoading(true);
-            setError(null);
-            console.log('🔍 Loading exercises with filters:', filters, 'search:', searchQuery);
-
-            let response;
-
-            if (searchQuery.trim()) {
-                // Search exercises
-                console.log('🔍 Searching for:', searchQuery);
-                response = await wgerService.searchExercises(searchQuery, 50);
-            } else if (filters.category || filters.muscle || filters.equipment) {
-                // Filtered exercises
-                const params = {
-                    limit: 50,
-                    offset: reset ? 0 : (currentPage - 1) * 50
-                };
-
-                if (filters.category) params.category = filters.category;
-                if (filters.muscle) params.muscle = filters.muscle;
-                if (filters.equipment) params.equipment = filters.equipment;
-
-                console.log('🔧 Filtering with params:', params);
-                response = await wgerService.getExercises(params);
-            } else {
-                // Default to loading initial exercises
-                await loadInitialExercises();
-                return;
+            const response = await workoutService.getWorkoutPlans();
+            if (response.success) {
+                setWorkoutPlans(response.workout_plans);
             }
-
-            console.log('📊 Exercise response:', response);
-
-            if (response.success && response.exercises?.length > 0) {
-                const exerciseList = response.exercises;
-                console.log('✅ Exercises loaded:', exerciseList.length);
-
-                // Process exercises for display
-                const processedExercises = exerciseList.map(exercise => ({
-                    id: exercise.id,
-                    name: exercise.name || `Exercise #${exercise.id}`,
-                    description: exercise.description || 'No description available',
-                    category: exercise.category_name || exercise.category || 'Unknown',
-                    muscles: Array.isArray(exercise.muscles) ? exercise.muscles : [],
-                    muscles_secondary: Array.isArray(exercise.muscles_secondary) ? exercise.muscles_secondary : [],
-                    equipment: Array.isArray(exercise.equipment) ? exercise.equipment : [],
-                    difficulty: getDifficulty(exercise),
-                    categoryIcon: getCategoryIcon(exercise.category_name || exercise.category)
-                }));
-
-                if (reset) {
-                    setExercises(processedExercises);
-                } else {
-                    setExercises(prev => [...prev, ...processedExercises]);
-                }
-                setTotalCount(response.count || exerciseList.length);
-                setHasMore(response.next != null);
-
-                console.log('✅ Final processed exercises:', processedExercises.length);
-            } else {
-                console.error('❌ Exercise loading failed:', response);
-                setError('Failed to load exercises');
-            }
-
-        } catch (err) {
-            console.error('❌ Error loading exercises:', err);
-            setError(`Failed to load exercises: ${err.message}`);
-        } finally {
-            setSearchLoading(false);
+        } catch (error) {
+            console.error('Error loading workout plans:', error);
         }
     };
 
-    // Helper functions
-    const getDifficulty = (exercise) => {
-        const equipmentCount = (exercise.equipment?.length || 0);
-        const muscleCount = (exercise.muscles?.length || 0) + (exercise.muscles_secondary?.length || 0);
+    const generateBetterName = (exercise) => {
+        // Create better names based on category and equipment
+        const category = exercise.category || 'Exercise';
+        const equipment = exercise.equipment || [];
+        const muscles = exercise.muscles || [];
 
-        if (equipmentCount === 0 && muscleCount <= 1) {
-            return 'Beginner';
-        } else if (equipmentCount <= 1 && muscleCount <= 3) {
-            return 'Intermediate';
+        if (equipment.length > 0 && muscles.length > 0) {
+            return `${category} - ${equipment[0]} (${muscles[0]})`;
+        } else if (equipment.length > 0) {
+            return `${category} - ${equipment[0]}`;
+        } else if (muscles.length > 0) {
+            return `${category} - ${muscles[0]}`;
         } else {
-            return 'Advanced';
+            return `${category} Exercise #${exercise.id}`;
         }
     };
 
-    const getCategoryIcon = (categoryName) => {
-        const iconMap = {
-            'Abs': '🏋️',
-            'Arms': '💪',
-            'Back': '🏃',
-            'Calves': '🦵',
-            'Cardio': '❤️',
-            'Chest': '💯',
-            'Legs': '🦵',
-            'Shoulders': '🏋️',
-            'Unknown': '🏋️'
-        };
+    const generateBetterDescription = (exercise) => {
+        const parts = [];
 
-        return iconMap[categoryName] || '🏋️';
+        if (exercise.category) {
+            parts.push(`Category: ${exercise.category}`);
+        }
+
+        if (exercise.muscles && exercise.muscles.length > 0) {
+            parts.push(`Targets: ${exercise.muscles.join(', ')}`);
+        }
+
+        if (exercise.equipment && exercise.equipment.length > 0) {
+            parts.push(`Equipment: ${exercise.equipment.join(', ')}`);
+        }
+
+        return parts.length > 0 ? parts.join(' • ') : 'Exercise from WGER database';
     };
 
-    const handleSearch = useCallback((query) => {
-        console.log('🔍 Search triggered:', query);
-        setSearchQuery(query);
-    }, []);
+    const handleFavoriteToggle = async (exercise) => {
+        if (!isAuthenticated) {
+            alert('Please log in to save favorites');
+            return;
+        }
 
-    const handleFilterChange = useCallback((newFilters) => {
-        console.log('🔧 Filters changed:', newFilters);
-        setFilters(newFilters);
-    }, []);
+        const isFavorited = favorites[exercise.id];
 
-    const loadMore = () => {
-        if (!searchLoading && hasMore) {
-            setCurrentPage(prev => prev + 1);
-            loadExercises(false);
+        try {
+            if (isFavorited) {
+                const response = await workoutService.removeFromFavorites(exercise.id);
+                if (response.success) {
+                    setFavorites(prev => ({
+                        ...prev,
+                        [exercise.id]: false
+                    }));
+                } else {
+                    alert('Failed to remove from favorites: ' + response.error);
+                }
+            } else {
+                const response = await workoutService.addToFavorites(exercise);
+                if (response.success) {
+                    setFavorites(prev => ({
+                        ...prev,
+                        [exercise.id]: true
+                    }));
+                } else {
+                    alert('Failed to add to favorites: ' + response.error);
+                }
+            }
+        } catch (error) {
+            alert('Error updating favorites: ' + error.message);
         }
     };
 
-    const clearFilters = () => {
-        console.log('🧹 Clearing filters');
-        setFilters({
-            category: '',
-            muscle: '',
-            equipment: '',
-            difficulty: ''
-        });
-        setSearchQuery('');
+    const handleAddToWorkout = (exercise) => {
+        if (!isAuthenticated) {
+            alert('Please log in to create workouts');
+            return;
+        }
+
+        setSelectedExercise(exercise);
+        setShowWorkoutModal(true);
     };
 
-    const retryLoading = () => {
-        console.log('🔄 Retrying to load exercises...');
-        setError(null);
-        loadInitialData();
+    const handleWorkoutSelection = async (planId) => {
+        try {
+            const response = await workoutService.addExerciseToWorkout(planId, selectedExercise);
+            if (response.success) {
+                alert(`Added "${selectedExercise.displayName}" to workout!`);
+                setShowWorkoutModal(false);
+                setSelectedExercise(null);
+            } else {
+                alert('Failed to add to workout: ' + response.error);
+            }
+        } catch (error) {
+            alert('Error adding to workout: ' + error.message);
+        }
+    };
+
+    const handleCreateNewWorkout = async () => {
+        const workoutName = prompt('Enter name for new workout:');
+        if (!workoutName) return;
+
+        try {
+            const createResponse = await workoutService.createWorkoutPlan(workoutName);
+            if (createResponse.success) {
+                const addResponse = await workoutService.addExerciseToWorkout(
+                    createResponse.workout_plan.id,
+                    selectedExercise
+                );
+                if (addResponse.success) {
+                    alert(`Created workout "${workoutName}" and added exercise!`);
+                    loadWorkoutPlans(); // Refresh workout plans
+                    setShowWorkoutModal(false);
+                    setSelectedExercise(null);
+                } else {
+                    alert('Workout created but failed to add exercise: ' + addResponse.error);
+                }
+            } else {
+                alert('Failed to create workout: ' + createResponse.error);
+            }
+        } catch (error) {
+            alert('Error creating workout: ' + error.message);
+        }
     };
 
     if (loading) {
         return (
-            <div className="exercise-browser-loading">
+            <div style={{ padding: '20px', textAlign: 'center' }}>
                 <LoadingSpinner />
-                <p>Loading exercise database...</p>
+                <p>Loading exercises...</p>
             </div>
         );
     }
 
     if (error) {
         return (
-            <div className="exercise-browser-error">
+            <div style={{ padding: '20px', textAlign: 'center' }}>
                 <h3>Error Loading Exercises</h3>
                 <p>{error}</p>
-                <div className="error-actions">
-                    <button onClick={retryLoading} className="btn btn-primary">
-                        Try Again
-                    </button>
-                    <button
-                        onClick={() => {
-                            setError(null);
-                            loadExercises(true);
-                        }}
-                        className="btn btn-secondary"
-                    >
-                        Load Basic Exercises
-                    </button>
-                </div>
+                <button onClick={loadExercises} style={{ padding: '10px 20px', margin: '10px' }}>
+                    Try Again
+                </button>
             </div>
         );
     }
 
-    console.log('🎨 Rendering ExerciseBrowser with', exercises.length, 'exercises');
-
     return (
-        <div className="exercise-browser">
-            <div className="exercise-browser-header">
-                <h2>Exercise Database</h2>
-                <p>Explore {totalCount.toLocaleString()} exercises from the wger database</p>
-            </div>
+        <div style={{ padding: '20px' }}>
+            <h1>Exercise Database</h1>
+            <p>Showing {exercises.length} exercises from WGER</p>
+            <p style={{ fontSize: '14px', color: '#666' }}>
+                Note: Exercise names are generated from available category/muscle/equipment data
+            </p>
 
-            <ExerciseFilters
-                categories={categories}
-                muscles={muscles}
-                equipment={equipment}
-                filters={filters}
-                searchQuery={searchQuery}
-                onFilterChange={handleFilterChange}
-                onSearch={handleSearch}
-                onClear={clearFilters}
-                loading={searchLoading}
-            />
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+                gap: '20px',
+                marginTop: '20px'
+            }}>
+                {exercises.map((exercise) => (
+                    <div
+                        key={exercise.id}
+                        style={{
+                            border: '1px solid #ddd',
+                            borderRadius: '8px',
+                            padding: '16px',
+                            backgroundColor: '#fff',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                        }}
+                    >
+                        <h3 style={{ margin: '0 0 10px 0', color: '#333', fontSize: '16px' }}>
+                            {exercise.displayName}
+                        </h3>
 
-            <div className="exercise-results">
-                <div className="exercise-results-header">
-                    <div className="exercise-count">
-                        Showing {exercises.length} of {totalCount.toLocaleString()} exercises
-                    </div>
+                        <p style={{ margin: '0 0 15px 0', color: '#666', fontSize: '14px' }}>
+                            {exercise.displayDescription}
+                        </p>
 
-                    {(filters.category || filters.muscle || filters.equipment || searchQuery) && (
-                        <button onClick={clearFilters} className="btn btn-secondary btn-sm">
-                            Clear Filters
-                        </button>
-                    )}
-                </div>
-
-                {exercises.length === 0 ? (
-                    <div className="no-exercises">
-                        <h3>No exercises found</h3>
-                        <p>Try adjusting your search terms or filters</p>
-                        <button onClick={clearFilters} className="btn btn-primary">
-                            Show All Exercises
-                        </button>
-                    </div>
-                ) : (
-                    <>
-                        <div className="exercise-grid">
-                            {exercises.map((exercise) => (
-                                <ExerciseCard
-                                    key={exercise.id}
-                                    exercise={exercise}
-                                    difficulty={exercise.difficulty}
-                                    categoryIcon={exercise.categoryIcon}
-                                />
-                            ))}
+                        <div style={{ fontSize: '12px', color: '#888', marginBottom: '15px' }}>
+                            Exercise ID: {exercise.id} | UUID: {exercise.uuid?.substring(0, 8)}...
                         </div>
 
-                        {hasMore && (
-                            <div className="exercise-load-more">
+                        <div style={{ marginTop: '15px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                            <button
+                                style={{
+                                    padding: '8px 16px',
+                                    backgroundColor: '#10b981',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    fontSize: '12px'
+                                }}
+                                onClick={() => {
+                                    // Search for the exercise on Google
+                                    const searchTerm = exercise.displayName.replace(/Exercise #\d+/, '').trim();
+                                    const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(searchTerm + ' exercise')}`;
+                                    window.open(googleUrl, '_blank');
+                                }}
+                            >
+                                Search Exercise
+                            </button>
+
+                            {isAuthenticated && (
                                 <button
-                                    onClick={loadMore}
-                                    disabled={searchLoading}
-                                    className="btn btn-primary"
+                                    style={{
+                                        padding: '8px 16px',
+                                        backgroundColor: favorites[exercise.id] ? '#ef4444' : '#6b7280',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer',
+                                        fontSize: '12px'
+                                    }}
+                                    onClick={() => handleFavoriteToggle(exercise)}
                                 >
-                                    {searchLoading ? (
-                                        <>
-                                            <LoadingSpinner size="small" />
-                                            Loading...
-                                        </>
-                                    ) : (
-                                        'Load More Exercises'
-                                    )}
+                                    {favorites[exercise.id] ? '❤️ Favorited' : '🤍 Favorite'}
                                 </button>
-                            </div>
-                        )}
-                    </>
-                )}
+                            )}
+
+                            {isAuthenticated && (
+                                <button
+                                    style={{
+                                        padding: '8px 16px',
+                                        backgroundColor: '#3b82f6',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer',
+                                        fontSize: '12px'
+                                    }}
+                                    onClick={() => handleAddToWorkout(exercise)}
+                                >
+                                    Add to Workout
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                ))}
             </div>
+
+            {exercises.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '40px' }}>
+                    <h3>No exercises found</h3>
+                    <button onClick={loadExercises} style={{ padding: '10px 20px' }}>
+                        Reload
+                    </button>
+                </div>
+            )}
+
+            {/* Workout Modal */}
+            {showWorkoutModal && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0,0,0,0.5)',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    zIndex: 1000
+                }}>
+                    <div style={{
+                        backgroundColor: 'white',
+                        padding: '20px',
+                        borderRadius: '8px',
+                        maxWidth: '400px',
+                        width: '90%',
+                        maxHeight: '80vh',
+                        overflowY: 'auto'
+                    }}>
+                        <h3>Add to Workout</h3>
+                        <p>Adding: <strong>{selectedExercise?.displayName}</strong></p>
+
+                        <div style={{ marginBottom: '20px' }}>
+                            <h4>Select Workout Plan:</h4>
+                            {workoutPlans.length === 0 ? (
+                                <p>No workout plans found.</p>
+                            ) : (
+                                workoutPlans.map(plan => (
+                                    <div key={plan.id} style={{ marginBottom: '10px' }}>
+                                        <button
+                                            style={{
+                                                padding: '10px 15px',
+                                                backgroundColor: '#f3f4f6',
+                                                border: '1px solid #d1d5db',
+                                                borderRadius: '4px',
+                                                cursor: 'pointer',
+                                                width: '100%',
+                                                textAlign: 'left'
+                                            }}
+                                            onClick={() => handleWorkoutSelection(plan.id)}
+                                        >
+                                            <strong>{plan.name}</strong>
+                                            <div style={{ fontSize: '12px', color: '#666' }}>
+                                                {plan.exercise_count} exercises
+                                            </div>
+                                        </button>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                            <button
+                                style={{
+                                    padding: '10px 20px',
+                                    backgroundColor: '#10b981',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer'
+                                }}
+                                onClick={handleCreateNewWorkout}
+                            >
+                                Create New Workout
+                            </button>
+                            <button
+                                style={{
+                                    padding: '10px 20px',
+                                    backgroundColor: '#6b7280',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer'
+                                }}
+                                onClick={() => {
+                                    setShowWorkoutModal(false);
+                                    setSelectedExercise(null);
+                                }}
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

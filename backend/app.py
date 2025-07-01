@@ -7,6 +7,10 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
 from datetime import timedelta
 from dotenv import load_dotenv
+from routes.auth import auth_bp
+from routes.training import training_bp
+from routes.wger import wger_bp
+from routes.workout import workout_bp
 
 load_dotenv()
 
@@ -145,6 +149,16 @@ def create_app():
         print(f"❌ Error loading exercise models: {e}")
         raise
 
+    # Create workout models
+    print("📦 Loading workout models...")
+    try:
+        from models.workout import create_workout_models
+        FavoriteExercise, WorkoutPlan, WorkoutPlanExercise = create_workout_models(db)
+        print("✅ Workout models loaded: FavoriteExercise, WorkoutPlan, WorkoutExercise")
+    except Exception as e:
+        print(f"❌ Error loading workout models: {e}")
+        raise
+
     # Make models available globally in the app
     app.User = User
     app.TrainingSession = TrainingSession
@@ -156,7 +170,9 @@ def create_app():
     app.MuscleGroup = MuscleGroup
     app.Equipment = Equipment
     app.Exercise = Exercise
-    app.WorkoutExercise = WorkoutExercise
+    app.WorkoutPlanExercise = WorkoutPlanExercise
+    app.FavoriteExercise = FavoriteExercise
+    app.WorkoutPlan = WorkoutPlan
     
     # Add UserPreferences if it exists
     if UserPreferences:
@@ -192,6 +208,13 @@ def create_app():
     except Exception as e:
         print(f"❌ Failed to import wger blueprint: {e}")
         wger_bp = None
+
+    try:
+        from routes.workout import workout_bp
+        print("✅ Workout blueprint imported")
+    except Exception as e:
+        print(f"❌ Failed to import workout blueprint: {e}")
+        workout_bp = None
     
     try:
         from routes.techniques import techniques_bp
@@ -241,6 +264,12 @@ def create_app():
         print("✅ wger blueprint registered at /api/wger")
     else:
         print("❌ wger blueprint not registered")
+
+    if workout_bp:
+        app.register_blueprint(workout_bp, url_prefix='/api/workout')
+        print("✅ Workout blueprint registered at /api/workout")
+    else:
+        print("❌ Workout blueprint not registered")
     
     if user_bp:
         app.register_blueprint(user_bp, url_prefix='/api/user')
