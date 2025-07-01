@@ -29,12 +29,21 @@ def create_app():
 
     # Configuration
     app.config['SECRET_KEY'] = 'dev-secret-key-change-in-production'
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///dojotracker.db'
+
+    # Database Configuration - Support both PostgreSQL and SQLite
+    database_url = os.getenv('DATABASE_URL')
+    if database_url:
+        app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+        print(f"✅ Using database from environment: {database_url.split('@')[0]}@****")
+    else:
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///dojotracker.db'
+        print("ℹ️ Using default SQLite database")
+
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['JWT_SECRET_KEY'] = 'jwt-secret-change-in-production'
-    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=7)  # Extended for development
+    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=7) 
     app.config['JWT_ALGORITHM'] = 'HS256'
-    
+
     # Important: These settings help with JWT token handling
     app.config['JWT_TOKEN_LOCATION'] = ['headers']
     app.config['JWT_HEADER_NAME'] = 'Authorization'

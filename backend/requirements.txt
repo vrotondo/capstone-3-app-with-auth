@@ -1,11 +1,21 @@
+# Flask and Extensions
 Flask==2.3.3
 Flask-SQLAlchemy==3.0.5
 Flask-JWT-Extended==4.5.2
 Flask-CORS==4.0.0
 Flask-Migrate==4.0.5
 Werkzeug==2.3.7
+
+# Database
+psycopg2-binary==2.9.7  # PostgreSQL adapter - ADDED FOR POSTGRESQL SUPPORT
+
+# Environment and Configuration
 python-dotenv==1.0.0
+
+# HTTP Requests and Web Scraping
 requests==2.31.0
-email-validator==2.0.0
 beautifulsoup4==4.12.2
 lxml==4.9.3
+
+# Validation
+email-validator==2.0.0

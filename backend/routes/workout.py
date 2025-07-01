@@ -16,6 +16,24 @@ def get_models():
         current_app.WorkoutPlanExercise
     )
 
+# ==================== TEST ENDPOINT ====================
+
+@workout_bp.route('/test', methods=['GET'])
+def test_workout_routes():
+    """Test endpoint for workout routes"""
+    return jsonify({
+        'message': 'Workout routes are working!',
+        'endpoints': {
+            'favorites': 'GET /api/workout/favorites',
+            'add_favorite': 'POST /api/workout/favorites',
+            'remove_favorite': 'DELETE /api/workout/favorites/<exercise_id>',
+            'check_favorite': 'GET /api/workout/favorites/check/<exercise_id>',
+            'workout_plans': 'GET /api/workout/plans',
+            'create_plan': 'POST /api/workout/plans',
+            'add_to_workout': 'POST /api/workout/plans/<plan_id>/exercises'
+        }
+    }), 200
+
 # ==================== FAVORITES ENDPOINTS ====================
 
 @workout_bp.route('/favorites', methods=['GET'])
@@ -26,7 +44,11 @@ def get_user_favorites():
         user_id = get_jwt_identity()
         FavoriteExercise, WorkoutPlan, WorkoutPlanExercise = get_models()
         
+        print(f"🔍 Getting favorites for user {user_id}")
+        
         favorites = FavoriteExercise.query.filter_by(user_id=user_id).order_by(FavoriteExercise.created_at.desc()).all()
+        
+        print(f"✅ Found {len(favorites)} favorites for user {user_id}")
         
         return jsonify({
             'success': True,
@@ -34,6 +56,9 @@ def get_user_favorites():
             'favorites': [fav.to_dict() for fav in favorites]
         })
     except Exception as e:
+        print(f"❌ Error getting favorites: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             'success': False,
             'error': str(e)
@@ -47,7 +72,9 @@ def add_to_favorites():
         user_id = get_jwt_identity()
         data = request.get_json()
         FavoriteExercise, WorkoutPlan, WorkoutPlanExercise = get_models()
-        db = get_db().db
+        db = get_db()
+        
+        print(f"🔍 Adding to favorites for user {user_id}: {data}")
         
         exercise_id = data.get('exercise_id')
         exercise_name = data.get('exercise_name')
@@ -86,6 +113,8 @@ def add_to_favorites():
         db.session.add(favorite)
         db.session.commit()
         
+        print(f"✅ Added exercise {exercise_id} to favorites for user {user_id}")
+        
         return jsonify({
             'success': True,
             'message': 'Exercise added to favorites',
@@ -93,7 +122,11 @@ def add_to_favorites():
         })
         
     except Exception as e:
-        db.session.rollback()
+        if 'db' in locals():
+            db.session.rollback()
+        print(f"❌ Error adding to favorites: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             'success': False,
             'error': str(e)
@@ -106,7 +139,9 @@ def remove_from_favorites(exercise_id):
     try:
         user_id = get_jwt_identity()
         FavoriteExercise, WorkoutPlan, WorkoutPlanExercise = get_models()
-        db = get_db().db
+        db = get_db()
+        
+        print(f"🔍 Removing exercise {exercise_id} from favorites for user {user_id}")
         
         favorite = FavoriteExercise.query.filter_by(
             user_id=user_id,
@@ -122,13 +157,19 @@ def remove_from_favorites(exercise_id):
         db.session.delete(favorite)
         db.session.commit()
         
+        print(f"✅ Removed exercise {exercise_id} from favorites for user {user_id}")
+        
         return jsonify({
             'success': True,
             'message': 'Exercise removed from favorites'
         })
         
     except Exception as e:
-        db.session.rollback()
+        if 'db' in locals():
+            db.session.rollback()
+        print(f"❌ Error removing from favorites: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             'success': False,
             'error': str(e)
@@ -153,6 +194,7 @@ def check_favorite_status(exercise_id):
         })
         
     except Exception as e:
+        print(f"❌ Error checking favorite status: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)
@@ -168,7 +210,11 @@ def get_workout_plans():
         user_id = get_jwt_identity()
         FavoriteExercise, WorkoutPlan, WorkoutPlanExercise = get_models()
         
+        print(f"🔍 Getting workout plans for user {user_id}")
+        
         plans = WorkoutPlan.query.filter_by(user_id=user_id, is_active=True).order_by(WorkoutPlan.updated_at.desc()).all()
+        
+        print(f"✅ Found {len(plans)} workout plans for user {user_id}")
         
         return jsonify({
             'success': True,
@@ -176,6 +222,9 @@ def get_workout_plans():
             'workout_plans': [plan.to_dict() for plan in plans]
         })
     except Exception as e:
+        print(f"❌ Error getting workout plans: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             'success': False,
             'error': str(e)
@@ -189,10 +238,12 @@ def create_workout_plan():
         user_id = get_jwt_identity()
         data = request.get_json()
         FavoriteExercise, WorkoutPlan, WorkoutPlanExercise = get_models()
-        db = get_db().db
+        db = get_db()
         
         name = data.get('name')
         description = data.get('description', '')
+        
+        print(f"🔍 Creating workout plan for user {user_id}: {name}")
         
         if not name:
             return jsonify({
@@ -210,6 +261,8 @@ def create_workout_plan():
         db.session.add(plan)
         db.session.commit()
         
+        print(f"✅ Created workout plan '{name}' for user {user_id}")
+        
         return jsonify({
             'success': True,
             'message': 'Workout plan created',
@@ -217,7 +270,11 @@ def create_workout_plan():
         })
         
     except Exception as e:
-        db.session.rollback()
+        if 'db' in locals():
+            db.session.rollback()
+        print(f"❌ Error creating workout plan: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             'success': False,
             'error': str(e)
@@ -231,7 +288,9 @@ def add_exercise_to_workout(plan_id):
         user_id = get_jwt_identity()
         data = request.get_json()
         FavoriteExercise, WorkoutPlan, WorkoutPlanExercise = get_models()
-        db = get_db().db
+        db = get_db()
+        
+        print(f"🔍 Adding exercise to workout plan {plan_id} for user {user_id}")
         
         # Verify plan ownership
         plan = WorkoutPlan.query.filter_by(
@@ -253,8 +312,9 @@ def add_exercise_to_workout(plan_id):
                 'error': 'exercise_id is required'
             }), 400
         
-        # Get next order number
-        max_order = db.session.query(db.func.max(WorkoutPlanExercise.order_in_workout)).filter_by(workout_plan_id=plan_id).scalar() or 0
+        # Get next order number - FIXED: Import func from sqlalchemy
+        from sqlalchemy import func
+        max_order = db.session.query(func.max(WorkoutPlanExercise.order_in_workout)).filter_by(workout_plan_id=plan_id).scalar() or 0
         
         # Create workout exercise
         workout_exercise = WorkoutPlanExercise(
@@ -274,6 +334,8 @@ def add_exercise_to_workout(plan_id):
         db.session.add(workout_exercise)
         db.session.commit()
         
+        print(f"✅ Added exercise {exercise_id} to workout plan {plan_id}")
+        
         return jsonify({
             'success': True,
             'message': 'Exercise added to workout',
@@ -281,7 +343,145 @@ def add_exercise_to_workout(plan_id):
         })
         
     except Exception as e:
-        db.session.rollback()
+        if 'db' in locals():
+            db.session.rollback()
+        print(f"❌ Error adding exercise to workout: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@workout_bp.route('/plans/<int:plan_id>', methods=['PUT'])
+@jwt_required()
+def update_workout_plan(plan_id):
+    """Update a workout plan"""
+    try:
+        user_id = get_jwt_identity()
+        data = request.get_json()
+        FavoriteExercise, WorkoutPlan, WorkoutPlanExercise = get_models()
+        db = get_db()
+        
+        # Verify plan ownership
+        plan = WorkoutPlan.query.filter_by(
+            id=plan_id,
+            user_id=user_id,
+            is_active=True
+        ).first()
+        
+        if not plan:
+            return jsonify({
+                'success': False,
+                'error': 'Workout plan not found'
+            }), 404
+        
+        # Update plan fields
+        if 'name' in data:
+            plan.name = data['name']
+        if 'description' in data:
+            plan.description = data['description']
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Workout plan updated',
+            'workout_plan': plan.to_dict()
+        })
+        
+    except Exception as e:
+        if 'db' in locals():
+            db.session.rollback()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@workout_bp.route('/plans/<int:plan_id>', methods=['DELETE'])
+@jwt_required()
+def delete_workout_plan(plan_id):
+    """Delete a workout plan"""
+    try:
+        user_id = get_jwt_identity()
+        FavoriteExercise, WorkoutPlan, WorkoutPlanExercise = get_models()
+        db = get_db()
+        
+        # Verify plan ownership
+        plan = WorkoutPlan.query.filter_by(
+            id=plan_id,
+            user_id=user_id,
+            is_active=True
+        ).first()
+        
+        if not plan:
+            return jsonify({
+                'success': False,
+                'error': 'Workout plan not found'
+            }), 404
+        
+        # Soft delete by setting is_active to False
+        plan.is_active = False
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Workout plan deleted'
+        })
+        
+    except Exception as e:
+        if 'db' in locals():
+            db.session.rollback()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@workout_bp.route('/plans/<int:plan_id>/exercises/<int:exercise_id>', methods=['DELETE'])
+@jwt_required()
+def remove_exercise_from_workout(plan_id, exercise_id):
+    """Remove an exercise from a workout plan"""
+    try:
+        user_id = get_jwt_identity()
+        FavoriteExercise, WorkoutPlan, WorkoutPlanExercise = get_models()
+        db = get_db()
+        
+        # Verify plan ownership
+        plan = WorkoutPlan.query.filter_by(
+            id=plan_id,
+            user_id=user_id,
+            is_active=True
+        ).first()
+        
+        if not plan:
+            return jsonify({
+                'success': False,
+                'error': 'Workout plan not found'
+            }), 404
+        
+        # Find and remove the exercise
+        workout_exercise = WorkoutPlanExercise.query.filter_by(
+            workout_plan_id=plan_id,
+            exercise_id=exercise_id
+        ).first()
+        
+        if not workout_exercise:
+            return jsonify({
+                'success': False,
+                'error': 'Exercise not found in workout plan'
+            }), 404
+        
+        db.session.delete(workout_exercise)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Exercise removed from workout plan'
+        })
+        
+    except Exception as e:
+        if 'db' in locals():
+            db.session.rollback()
         return jsonify({
             'success': False,
             'error': str(e)
