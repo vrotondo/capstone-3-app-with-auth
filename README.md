@@ -1,267 +1,323 @@
-# DojoTracker - Martial Arts Training Logger
+# 🥋 DojoTracker
 
-A full-stack web application for martial artists to track their training sessions, monitor technique progress, and analyze their improvement over time.
+**A full-stack web application for martial artists to track their training sessions, monitor technique progress, manage workout plans, and analyze their improvement over time.**
 
-## Features
+![DojoTracker](https://img.shields.io/badge/Status-Production%20Ready-green)
+![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-blue)
+![React](https://img.shields.io/badge/Frontend-React%2019-61DAFB)
+![Flask](https://img.shields.io/badge/Backend-Flask-000000)
 
-### ✅ Completed Features
-- **User Authentication** - Secure registration and login system
+## ✨ Features
+
+### 🔐 **Authentication & User Management**
+- Secure user registration and login system
+- JWT-based authentication with token management
+- Protected routes and user session handling
+- User profile management
+
+### 🥋 **Training & Technique Management**
 - **Training Session Logging** - Record duration, intensity, techniques, and notes
 - **Technique Progress Tracking** - Monitor proficiency levels and mastery status
+- **Technique Library** - Browse and bookmark martial arts techniques
+- **Personal Technique Collection** - Save and organize your favorite techniques
+
+### 💪 **Exercise & Workout Management**
+- **Exercise Database** - Access thousands of exercises via wger API integration
+- **Favorites System** - Save your favorite exercises for quick access
+- **Workout Plan Creation** - Build custom workout routines
+- **Exercise Categorization** - Filter by muscle groups, equipment, and difficulty
+- **Martial Arts Focus** - Exercises specifically relevant for martial arts training
+
+### 📊 **Analytics & Progress**
 - **Dashboard Analytics** - View training statistics and recent activity
-- **Responsive Design** - Works on desktop and mobile devices
+- **Progress Tracking** - Monitor improvement over time
 - **Data Filtering** - Filter sessions by style, date range, and other criteria
 
-### 🚧 Planned Features
-- **External API Integrations** (Fitbit, Google Fit, etc.)
-- **Advanced Analytics** - Charts and detailed progress reports
-- **Social Features** - Share achievements and connect with other martial artists
-- **Goal Setting** - Set and track training goals
-- **Video Integration** - Attach technique demonstration videos
+### 🌐 **Integration & Compatibility**
+- **wger API Integration** - Access professional exercise database
+- **Responsive Design** - Works seamlessly on desktop and mobile devices
+- **External API Support** - Ready for future integrations (Fitbit, Google Fit, etc.)
 
-## Tech Stack
+## 🛠️ Tech Stack
 
-### Backend
+### **Backend**
 - **Flask** - Python web framework
-- **SQLAlchemy** - Database ORM
-- **JWT** - Authentication tokens
-- **SQLite** - Database (development)
+- **PostgreSQL** - Production-ready relational database
+- **SQLAlchemy** - Database ORM with model relationships
+- **JWT Extended** - Secure authentication tokens
 - **Flask-CORS** - Cross-origin resource sharing
+- **psycopg2** - PostgreSQL adapter
+- **python-dotenv** - Environment variable management
 
-### Frontend
-- **React 19** - User interface library
-- **React Router** - Client-side routing
-- **Axios** - HTTP client
-- **CSS3** - Styling with custom CSS variables
-- **Date-fns** - Date manipulation
+### **Frontend**
+- **React 19** - Modern user interface library
+- **React Router** - Client-side routing and navigation
+- **Axios** - HTTP client for API communication
+- **CSS3** - Custom styling with CSS variables
+- **Vite** - Fast development build tool
 
-## Project Structure
+### **External APIs**
+- **wger API** - Exercise database and workout management
+- **RESTful Architecture** - Clean API design patterns
+
+## 📁 Project Structure
 
 ```
 dojotracker/
 ├── backend/
-│   ├── app.py                 # Main Flask application
+│   ├── app.py                      # Main Flask application
 │   ├── models/
-│   │   ├── user.py           # User model
-│   │   └── training.py       # Training and technique models
+│   │   ├── user.py                 # User and authentication models
+│   │   ├── training.py             # Training session models
+│   │   ├── technique_library.py    # Technique and bookmark models
+│   │   ├── exercise.py             # Exercise and category models
+│   │   └── workout.py              # Workout plans and favorites
 │   ├── routes/
-│   │   ├── auth.py           # Authentication routes
-│   │   └── training.py       # Training session routes
-│   ├── config.py             # Configuration settings
-│   └── requirements.txt      # Python dependencies
+│   │   ├── auth.py                 # Authentication endpoints
+│   │   ├── training.py             # Training session routes
+│   │   ├── techniques.py           # Technique management
+│   │   ├── exercises.py            # Exercise database routes
+│   │   ├── workout.py              # Workout plans and favorites
+│   │   ├── wger.py                 # wger API integration
+│   │   └── user.py                 # User profile management
+│   ├── services/
+│   │   └── wger_api.py             # wger API service layer
+│   ├── .env                        # Environment configuration
+│   ├── requirements.txt            # Python dependencies
+│   └── migrate_sqlite_to_postgresql.py # Database migration tool
 ├── frontend/
 │   ├── src/
-│   │   ├── components/       # React components
-│   │   ├── pages/           # Page components
-│   │   ├── services/        # API services
-│   │   ├── context/         # React context providers
-│   │   └── styles/          # CSS styles
-│   ├── package.json         # Node.js dependencies
-│   └── vite.config.js       # Vite configuration
-├── start_dev.py             # Development server startup script
-├── test_connection.py       # Backend API testing script
-└── README.md
+│   │   ├── components/
+│   │   │   ├── features/           # Feature-specific components
+│   │   │   ├── layout/             # Layout components
+│   │   │   └── common/             # Reusable components
+│   │   ├── pages/                  # Main page components
+│   │   ├── services/               # API service layers
+│   │   ├── context/                # React context providers
+│   │   └── styles/                 # CSS stylesheets
+│   ├── package.json                # Node.js dependencies
+│   └── vite.config.js              # Vite configuration
+├── README.md                       # Project documentation
+└── start_dev.py                    # Development server launcher
 ```
 
-## Quick Start
+## 🚀 Quick Start
 
-### Prerequisites
-- Python 3.8+ 
+### **Prerequisites**
+- Python 3.8+
 - Node.js 16+
+- PostgreSQL 15+
 - npm or yarn
 
-### Option 1: Automated Setup (Recommended)
+### **1. Clone Repository**
+```bash
+git clone <repository-url>
+cd dojotracker
+```
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd dojotracker
-   ```
+### **2. Database Setup**
 
-2. **Start development servers**
-   ```bash
-   python start_dev.py
-   ```
-   This will:
-   - Check requirements
-   - Install frontend dependencies
-   - Start backend on http://localhost:8000
-   - Start frontend on http://localhost:3000
+#### **Install PostgreSQL**
+1. Download and install PostgreSQL from [postgresql.org](https://www.postgresql.org/download/)
+2. Remember your postgres user password during installation
+3. Note the port (usually 5432 or 5433)
 
-### Option 2: Manual Setup
+#### **Create Database**
+```bash
+# Using psql command line (adjust path and port as needed)
+"C:\Program Files\PostgreSQL\15\bin\psql.exe" -U postgres -p 5433 -c "CREATE DATABASE dojotracker;"
+```
 
-#### Backend Setup
-
-1. **Navigate to backend directory**
-   ```bash
-   cd backend
-   ```
-
-2. **Create virtual environment**
-   ```bash
-   python -m venv venv
-   
-   # Windows
-   venv\Scripts\activate
-   
-   # macOS/Linux
-   source venv/bin/activate
-   ```
-
-3. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Start the backend server**
-   ```bash
-   python app.py
-   ```
-   Backend will run on http://localhost:8000
-
-#### Frontend Setup
-
-1. **Navigate to frontend directory**
-   ```bash
-   cd frontend
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Start the development server**
-   ```bash
-   npm run dev
-   ```
-   Frontend will run on http://localhost:3000
-
-## Testing
-
-### Backend API Testing
-
-Run the comprehensive backend test suite:
+### **3. Backend Setup**
 
 ```bash
+# Navigate to backend directory
+cd backend
+
+# Create virtual environment
+python -m venv venv
+
+# Activate virtual environment
+# Windows:
+venv\Scripts\activate
+# macOS/Linux:
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+### **4. Environment Configuration**
+
+Create `backend/.env` file:
+```env
+# Environment Configuration
+FLASK_APP=app.py
+FLASK_ENV=development
+FLASK_DEBUG=True
+
+# Secret Keys (CHANGE IN PRODUCTION!)
+SECRET_KEY=your-super-secret-key-change-in-production
+JWT_SECRET_KEY=your-jwt-secret-key-change-in-production
+
+# Database Configuration
+DATABASE_URL=postgresql://postgres:your_password@localhost:5433/dojotracker
+
+# API Keys
+WGER_API_KEY=your_wger_api_key_here
+
+# Server Configuration
+PORT=8000
+HOST=127.0.0.1
+```
+
+### **5. Frontend Setup**
+
+```bash
+# Navigate to frontend directory
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+
+### **6. Start Backend**
+
+```bash
+# In backend directory with virtual environment activated
+python app.py
+```
+
+## 🌐 Application URLs
+
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:8000/api
+- **API Documentation**: http://localhost:8000/api/debug/routes
+
+## 🔧 Development
+
+### **Running Tests**
+```bash
+# Backend API tests
+cd backend
 python test_connection.py
 ```
 
-This will test:
-- Basic API endpoints
-- User registration and authentication
-- Training session CRUD operations
-- Technique progress tracking
-- Statistics endpoints
+### **Database Migration**
+If migrating from SQLite to PostgreSQL:
+```bash
+cd backend
+python migrate_sqlite_to_postgresql.py
+```
 
-### Manual Testing
+### **Environment Variables**
 
-1. **Open the application**
-   - Visit http://localhost:3000
-   - Register a new account
-   - Log in with your credentials
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `DATABASE_URL` | PostgreSQL connection string | Yes |
+| `SECRET_KEY` | Flask session secret | Yes |
+| `JWT_SECRET_KEY` | JWT token signing key | Yes |
+| `WGER_API_KEY` | wger API access key | Optional |
+| `FLASK_ENV` | Development/production mode | No |
 
-2. **Test core features**
-   - Create a training session
-   - Add techniques to your library
-   - View dashboard statistics
-   - Filter and search sessions
+## 📡 API Endpoints
 
-## API Documentation
-
-### Authentication Endpoints
-
+### **Authentication**
 - `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Authenticate user
+- `POST /api/auth/login` - User login
 - `GET /api/auth/me` - Get current user profile
 - `PUT /api/auth/me` - Update user profile
 
-### Training Endpoints
-
+### **Training Sessions**
 - `GET /api/training/sessions` - Get training sessions
 - `POST /api/training/sessions` - Create training session
 - `GET /api/training/sessions/:id` - Get specific session
 - `PUT /api/training/sessions/:id` - Update training session
 - `DELETE /api/training/sessions/:id` - Delete training session
 
-### Technique Endpoints
+### **Techniques**
+- `GET /api/techniques` - Browse technique library
+- `POST /api/techniques/bookmark` - Bookmark technique
+- `GET /api/techniques/bookmarks` - Get user bookmarks
+- `DELETE /api/techniques/bookmark/:id` - Remove bookmark
 
-- `GET /api/training/techniques` - Get technique progress
-- `POST /api/training/techniques` - Create technique entry
-- `PUT /api/training/techniques/:id` - Update technique progress
-- `DELETE /api/training/techniques/:id` - Delete technique
+### **Exercises & Workouts**
+- `GET /api/exercises` - Browse exercise database
+- `GET /api/exercises/search?q=query` - Search exercises
+- `GET /api/workout/favorites` - Get favorite exercises
+- `POST /api/workout/favorites` - Add exercise to favorites
+- `DELETE /api/workout/favorites/:id` - Remove from favorites
+- `GET /api/workout/plans` - Get workout plans
+- `POST /api/workout/plans` - Create workout plan
+- `POST /api/workout/plans/:id/exercises` - Add exercise to workout
 
-### Analytics Endpoints
-
+### **Statistics**
 - `GET /api/training/stats` - Get training statistics
 - `GET /api/training/styles` - Get user's martial arts styles
 
-## Development
+## 🛠️ Production Deployment
 
-### Environment Variables
-
-Create a `.env` file in the backend directory:
-
+### **Environment Variables for Production**
 ```env
-FLASK_APP=app.py
-FLASK_ENV=development
-SECRET_KEY=your-secret-key-here
-DATABASE_URL=sqlite:///dojotracker.db
-JWT_SECRET_KEY=your-jwt-secret-here
+FLASK_ENV=production
+SECRET_KEY=your-production-secret-key
+DATABASE_URL=postgresql://user:password@host:port/database
+JWT_SECRET_KEY=your-production-jwt-secret
 ```
 
-### Database Management
+### **Database Configuration**
+- Use PostgreSQL with SSL enabled
+- Set up connection pooling
+- Configure backup strategy
+- Enable query optimization
 
-The SQLite database is automatically created when you first run the application. To reset the database:
-
+### **Build Frontend**
 ```bash
-cd backend
-python -c "from app import create_app, db; app = create_app(); app.app_context().push(); db.drop_all(); db.create_all()"
+cd frontend
+npm run build
 ```
 
-### Adding New Features
+### **Deploy Backend**
+- Use a WSGI server (Gunicorn, uWSGI)
+- Configure reverse proxy (Nginx)
+- Set up SSL certificates
+- Monitor with logging and health checks
 
-1. **Backend Changes**
-   - Add new models in `backend/models/`
-   - Create new routes in `backend/routes/`
-   - Update database schema if needed
+## 🔍 Troubleshooting
 
-2. **Frontend Changes**
-   - Add new components in `frontend/src/components/`
-   - Create new pages in `frontend/src/pages/`
-   - Add new services in `frontend/src/services/`
-   - Update styles in `frontend/src/styles/`
+### **Common Issues**
 
-## Deployment
+#### **Database Connection Failed**
+- Verify PostgreSQL is running
+- Check port configuration (5432 vs 5433)
+- Confirm database exists and credentials are correct
+- Test connection: `psql -U postgres -d dojotracker`
 
-### Backend Deployment
+#### **JWT Token Issues**
+- Clear browser localStorage/cookies
+- Check JWT secret keys match between requests
+- Verify token expiration settings
 
-1. **Production Environment**
-   - Use PostgreSQL instead of SQLite
-   - Set production environment variables
-   - Use a proper WSGI server (Gunicorn, uWSGI)
+#### **wger API Issues**
+- Verify API key in environment variables
+- Check network connectivity
+- Monitor API rate limits
 
-2. **Environment Variables for Production**
-   ```env
-   FLASK_ENV=production
-   SECRET_KEY=your-production-secret-key
-   DATABASE_URL=postgresql://user:password@host:port/database
-   JWT_SECRET_KEY=your-production-jwt-secret
-   ```
+#### **Frontend Build Issues**
+- Delete `node_modules` and run `npm install`
+- Check Node.js version compatibility
+- Verify all dependencies are installed
 
-### Frontend Deployment
+### **Debug Endpoints**
+- `GET /api/health` - API health check
+- `GET /api/debug/jwt` - JWT configuration
+- `GET /api/debug/routes` - All registered routes
+- `GET /api/database/info` - Database connection status
 
-1. **Build for production**
-   ```bash
-   cd frontend
-   npm run build
-   ```
-
-2. **Deploy built files**
-   - Upload `dist/` folder to your web server
-   - Configure proper routing for SPA
-
-## Contributing
+## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
@@ -269,47 +325,24 @@ python -c "from app import create_app, db; app = create_app(); app.app_context()
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## Troubleshooting
-
-### Common Issues
-
-1. **Backend won't start**
-   - Check Python version (3.8+ required)
-   - Ensure virtual environment is activated
-   - Verify all dependencies are installed
-
-2. **Frontend won't start**
-   - Check Node.js version (16+ required)
-   - Delete `node_modules` and run `npm install`
-   - Check for port conflicts
-
-3. **API connection fails**
-   - Ensure backend is running on port 8000
-   - Check CORS settings
-   - Verify API base URL in frontend
-
-4. **Database issues**
-   - Delete `dojotracker.db` and restart backend
-   - Check database permissions
-   - Verify SQLAlchemy configuration
-
-### Getting Help
-
-- Check the [Issues](https://github.com/your-repo/dojotracker/issues) page
-- Run the test script: `python test_connection.py`
-- Check browser console for frontend errors
-- Check backend logs for API errors
-
-## License
+## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Acknowledgments
+## 🙏 Acknowledgments
 
-- Built with modern web technologies
-- Designed for martial artists, by martial artists
-- Open source and community-driven
+- **wger Project** - Exercise database and API ([wger.de](https://wger.de))
+- **Flask Community** - Web framework and extensions
+- **React Team** - Frontend library and ecosystem
+- **PostgreSQL** - Robust database system
+
+## 📞 Support
+
+For support and questions:
+- Check the [Issues](../../issues) page
+- Run debug endpoints for troubleshooting
+- Review the troubleshooting section above
 
 ---
 
-**Happy Training! 🥋**
+**Happy Training! 🥋💪**
