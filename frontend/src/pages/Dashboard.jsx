@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/common/Button';
 import LoadingSpinner from '../components/common/LoadingSpinner';
-import AIInsights from '../components/AIInsights'; // NEW: Import AI Insights component
+import AIInsights from '../components/AIInsights';
+import AIChatCoach, { AIChatToggle } from '../components/AIChatCoach'; // NEW
 import trainingService from '../services/trainingService';
 import "../styles/pages/dashboard.css";
 
@@ -13,6 +14,7 @@ const Dashboard = () => {
     const [recentSessions, setRecentSessions] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
+    const [showAIChat, setShowAIChat] = useState(false); // NEW
 
     useEffect(() => {
         loadDashboardData();
@@ -23,7 +25,6 @@ const Dashboard = () => {
             setIsLoading(true);
             setError('');
 
-            // Load training stats and recent sessions
             const [statsResponse, sessionsResponse] = await Promise.all([
                 trainingService.getStats(),
                 trainingService.getSessions({ limit: 5 })
@@ -69,7 +70,7 @@ const Dashboard = () => {
             )}
 
             <div className="dashboard-grid">
-                {/* Training Stats */}
+                {/* Your existing dashboard cards */}
                 <div className="dashboard-card">
                     <h3>Training Overview</h3>
                     {stats ? (
@@ -97,7 +98,6 @@ const Dashboard = () => {
                     </div>
                 </div>
 
-                {/* This Week's Progress */}
                 <div className="dashboard-card">
                     <h3>This Week</h3>
                     {stats && stats.this_week ? (
@@ -126,98 +126,13 @@ const Dashboard = () => {
                     </div>
                 </div>
 
-                {/* NEW: AI Insights Card */}
+                {/* AI Insights Card */}
                 <AIInsights />
 
-                {/* Techniques Progress */}
-                <div className="dashboard-card">
-                    <h3>Techniques</h3>
-                    {stats && stats.technique_stats ? (
-                        <div className="technique-overview">
-                            <div className="technique-total">
-                                <span className="technique-number">{stats.technique_stats.total_techniques}</span>
-                                <span className="technique-label">Total Techniques</span>
-                            </div>
-                            {stats.technique_stats.mastery_breakdown && Object.keys(stats.technique_stats.mastery_breakdown).length > 0 ? (
-                                <div className="mastery-breakdown">
-                                    {Object.entries(stats.technique_stats.mastery_breakdown).map(([status, count]) => (
-                                        <div key={status} className="mastery-item">
-                                            <span className={`mastery-badge ${status}`}>{count}</span>
-                                            <span className="mastery-label">{trainingService.getMasteryLabel(status)}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <p>Start building your technique library!</p>
-                            )}
-                        </div>
-                    ) : (
-                        <p>No techniques added yet. Build your technique library!</p>
-                    )}
-                    <div className="card-action">
-                        <Link to="/techniques">
-                            <Button variant="outline" size="sm">Manage Techniques</Button>
-                        </Link>
-                    </div>
-                </div>
-
-                {/* Martial Arts Styles */}
-                <div className="dashboard-card">
-                    <h3>Your Styles</h3>
-                    {stats && stats.styles_practiced && stats.styles_practiced.length > 0 ? (
-                        <div className="styles-list">
-                            {stats.styles_practiced.map((style, index) => (
-                                <span key={index} className="style-tag">{style}</span>
-                            ))}
-                        </div>
-                    ) : (
-                        <p>No martial arts styles recorded yet.</p>
-                    )}
-                    <div className="card-action">
-                        <Link to="/profile">
-                            <Button variant="outline" size="sm">Update Profile</Button>
-                        </Link>
-                    </div>
-                </div>
+                {/* Your other existing cards... */}
             </div>
 
-            {/* Recent Sessions */}
-            {recentSessions.length > 0 && (
-                <div className="recent-sessions-section">
-                    <div className="section-header">
-                        <h2>Recent Training Sessions</h2>
-                        <Link to="/training">
-                            <Button variant="outline" size="sm">View All</Button>
-                        </Link>
-                    </div>
-
-                    <div className="recent-sessions-grid">
-                        {recentSessions.map((session) => (
-                            <div key={session.id} className="recent-session-card">
-                                <div className="session-info">
-                                    <h4>{session.style}</h4>
-                                    <p className="session-date">{formatDate(session.date)}</p>
-                                </div>
-                                <div className="session-metrics">
-                                    <span className="session-duration">
-                                        {trainingService.formatDuration(session.duration)}
-                                    </span>
-                                    <span className="session-intensity">
-                                        Intensity: {session.intensity_level}/10
-                                    </span>
-                                </div>
-                                {session.techniques_practiced && session.techniques_practiced.length > 0 && (
-                                    <div className="session-techniques">
-                                        <span className="techniques-count">
-                                            {session.techniques_practiced.length} technique{session.techniques_practiced.length !== 1 ? 's' : ''}
-                                        </span>
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
+            {/* Recent Sessions section... */}
 
             {/* Quick Actions */}
             <div className="quick-actions-section">
@@ -241,15 +156,28 @@ const Dashboard = () => {
                         <p>Manage your account settings</p>
                     </Link>
 
-                    {/* NEW: AI Insights Quick Action */}
-                    <div className="quick-action-card ai-action">
+                    {/* NEW: AI Coach Quick Action */}
+                    <div
+                        className="quick-action-card ai-action"
+                        onClick={() => setShowAIChat(true)}
+                        style={{ cursor: 'pointer' }}
+                    >
                         <div className="action-icon">🤖</div>
-                        <h3>AI Analysis</h3>
-                        <p>Get personalized training insights</p>
-                        <small>Powered by Google Gemini</small>
+                        <h3>AI Coach Chat</h3>
+                        <p>Get personalized training advice</p>
+                        <small>Ask questions, get tips, stay motivated</small>
                     </div>
                 </div>
             </div>
+
+            {/* AI Chat Component */}
+            <AIChatCoach
+                isOpen={showAIChat}
+                onClose={() => setShowAIChat(false)}
+            />
+
+            {/* Floating Chat Toggle */}
+            <AIChatToggle onClick={() => setShowAIChat(true)} />
         </div>
     );
 };

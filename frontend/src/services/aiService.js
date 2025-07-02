@@ -1,6 +1,3 @@
-// Create this file as: frontend/src/services/aiService.js
-
-// Use the same base URL pattern as your other services
 const API_BASE_URL = 'http://localhost:8000/api';
 
 class AIService {
@@ -193,13 +190,71 @@ class AIService {
         return names[timeframe] || 'Last 30 Days';
     }
 
-    // Check if AI features should be shown
-    async shouldShowAIFeatures() {
+    // Send chat message to AI coach
+    async sendChatMessage(message, chatHistory = []) {
         try {
-            const health = await this.checkHealth();
-            return health.ai_service_enabled === true;
+            const response = await fetch(`${this.baseURL}/chat`, {
+                method: 'POST',
+                headers: this.getAuthHeaders(),
+                body: JSON.stringify({
+                    message,
+                    chat_history: chatHistory.map(msg => ({
+                        role: msg.role === 'coach' ? 'assistant' : 'user',
+                        content: msg.content
+                    }))
+                }),
+            });
+
+            return await this.handleResponse(response);
         } catch (error) {
-            return false;
+            console.error('Failed to send chat message:', error);
+            throw error;
+        }
+    }
+
+    // Get chat suggestions
+    async getChatSuggestions() {
+        try {
+            const response = await fetch(`${this.baseURL}/chat/suggestions`, {
+                method: 'GET',
+                headers: this.getAuthHeaders(),
+            });
+
+            return await this.handleResponse(response);
+        } catch (error) {
+            console.error('Failed to get chat suggestions:', error);
+            throw error;
+        }
+    }
+
+    // Generate workout plan
+    async generateWorkoutPlan(preferences = {}) {
+        try {
+            const response = await fetch(`${this.baseURL}/workout-plan`, {
+                method: 'POST',
+                headers: this.getAuthHeaders(),
+                body: JSON.stringify({ preferences }),
+            });
+
+            return await this.handleResponse(response);
+        } catch (error) {
+            console.error('Failed to generate workout plan:', error);
+            throw error;
+        }
+    }
+
+    // Analyze injury risk
+    async analyzeInjuryRisk() {
+        try {
+            const response = await fetch(`${this.baseURL}/injury-risk`, {
+                method: 'GET',
+                headers: this.getAuthHeaders(),
+            });
+
+            return await this.handleResponse(response);
+        } catch (error) {
+            console.error('Failed to analyze injury risk:', error);
+            throw error;
         }
     }
 }

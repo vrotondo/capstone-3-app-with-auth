@@ -465,3 +465,409 @@ def ai_status():
         ],
         'timestamp': datetime.utcnow().isoformat()
     })
+
+@ai_bp.route('/chat', methods=['POST'])
+@jwt_required()
+def ai_chat():
+    """
+    AI Chat feature - Talk to your personal martial arts coach
+    """
+    try:
+        user_id = get_jwt_identity()
+        request_data = request.get_json()
+        
+        message = request_data.get('message', '').strip()
+        chat_history = request_data.get('chat_history', [])
+        
+        if not message:
+            return jsonify({
+                'error': 'Message is required',
+                'success': False
+            }), 400
+        
+        # Get user profile and training data for context
+        User = current_app.User
+        TrainingSession = current_app.TrainingSession
+        TechniqueProgress = current_app.TechniqueProgress
+        
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        # Get recent training data for context
+        recent_sessions = TrainingSession.query.filter(
+            TrainingSession.user_id == user_id
+        ).order_by(TrainingSession.created_at.desc()).limit(5).all()
+        
+        recent_techniques = TechniqueProgress.query.filter(
+            TechniqueProgress.user_id == user_id
+        ).limit(10).all()
+        
+        # Prepare context for AI
+        user_context = {
+            'name': getattr(user, 'first_name', getattr(user, 'username', 'Student')),
+            'experience': getattr(user, 'experience_level', 'Not specified'),
+            'primary_art': getattr(user, 'primary_martial_art', 'Various'),
+            'recent_sessions': len(recent_sessions),
+            'total_techniques': len(recent_techniques)
+        }
+        
+        # Generate AI response
+        gemini_service = get_gemini_service()
+        ai_response = gemini_service.generate_chat_response(message, chat_history, user_context)
+        
+        return jsonify({
+            'success': True,
+            'response': ai_response,
+            'timestamp': datetime.utcnow().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in AI chat: {e}")
+        return jsonify({
+            'error': 'Failed to generate chat response',
+            'message': str(e),
+            'success': False
+        }), 500
+
+@ai_bp.route('/chat/suggestions', methods=['GET'])
+@jwt_required()
+def get_chat_suggestions():
+    """Get suggested questions for the AI chat"""
+    user_id = get_jwt_identity()
+    
+    # Get user's training data to provide relevant suggestions
+    User = current_app.User
+    TrainingSession = current_app.TrainingSession
+    
+    user = User.query.get(user_id)
+    recent_sessions = TrainingSession.query.filter(
+        TrainingSession.user_id == user_id
+    ).order_by(TrainingSession.created_at.desc()).limit(3).all()
+    
+    # Base suggestions
+    suggestions = [
+        "How can I improve my technique?",
+        "What should I focus on in my next training session?",
+        "How often should I train per week?",
+        "What are some good warm-up exercises?",
+        "How do I stay motivated in my martial arts journey?"
+    ]
+    
+    # Add personalized suggestions based on user data
+    if user and hasattr(user, 'primary_martial_art') and user.primary_martial_art:
+        art = user.primary_martial_art
+        suggestions.insert(0, f"What are the fundamentals I should master in {art}?")
+        suggestions.insert(1, f"What's a good training plan for {art}?")
+    
+    if recent_sessions:
+        latest_session = recent_sessions[0]
+        if hasattr(latest_session, 'martial_art_style') and latest_session.martial_art_style:
+            suggestions.insert(0, f"How did my last {latest_session.martial_art_style} session look?")
+    
+    return jsonify({
+        'success': True,
+        'suggestions': suggestions[:8]  # Limit to 8 suggestions
+    })
+
+@ai_bp.route('/workout-plan', methods=['POST'])
+@jwt_required()
+def generate_workout_plan():
+    """Generate AI-powered weekly workout plan"""
+    try:
+        user_id = get_jwt_identity()
+        request_data = request.get_json() or {}
+        preferences = request_data.get('preferences', {})
+        
+        # Get user data
+        User = current_app.User
+        TrainingSession = current_app.TrainingSession
+        TechniqueProgress = current_app.TechniqueProgress
+        
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        # Get training history
+        sessions = TrainingSession.query.filter(
+            TrainingSession.user_id == user_id
+        ).order_by(TrainingSession.created_at.desc()).limit(20).all()
+        
+        techniques = TechniqueProgress.query.filter(
+            TechniqueProgress.user_id == user_id
+        ).all()
+        
+        # Prepare data
+        user_data = {
+            'sessions': [{
+                'date': s.created_at.isoformat() if s.created_at else None,
+                'duration_minutes': getattr(s, 'duration_minutes', getattr(s, 'duration', 0)),
+                'intensity': getattr(s, 'intensity', getattr(s, 'intensity_level', 0)),
+                'martial_art_style': getattr(s, 'martial_art_style', getattr(s, 'style', 'Unknown')),
+                'techniques_practiced': getattr(s, 'techniques_practiced', '')
+            } for s in sessions],
+            'user_profile': {
+                'first_name': getattr(user, 'first_name', getattr(user, 'username', 'Student')),
+                'primary_martial_art': getattr(user, 'primary_martial_art', 'Mixed Martial Arts'),
+                'experience_level': getattr(user, 'experience_level', 'Intermediate'),
+                'goals': getattr(user, 'training_goals', 'General improvement')
+            }
+        }
+        
+        # Generate workout plan
+        gemini_service = get_gemini_service()
+        workout_plan = gemini_service.generate_workout_plan(user_data, preferences)
+        
+        return jsonify(workout_plan)
+        
+    except Exception as e:
+        logger.error(f"Error generating workout plan: {e}")
+        return jsonify({
+            'error': 'Failed to generate workout plan',
+            'message': str(e),
+            'success': False
+        }), 500
+
+@ai_bp.route('/injury-risk', methods=['GET'])
+@jwt_required()
+def analyze_injury_risk():
+    """Analyze user's training patterns for injury risk factors"""
+    try:
+        user_id = get_jwt_identity()
+        
+        # Get training data
+        TrainingSession = current_app.TrainingSession
+        sessions = TrainingSession.query.filter(
+            TrainingSession.user_id == user_id
+        ).order_by(TrainingSession.created_at.desc()).limit(30).all()
+        
+        if len(sessions) < 3:
+            return jsonify({
+                'error': 'Need at least 3 training sessions for injury risk analysis',
+                'success': False
+            }), 400
+        
+        # Prepare data
+        user_data = {
+            'sessions': [{
+                'date': s.created_at.isoformat() if s.created_at else None,
+                'duration_minutes': getattr(s, 'duration_minutes', getattr(s, 'duration', 0)),
+                'intensity': getattr(s, 'intensity', getattr(s, 'intensity_level', 0)),
+                'martial_art_style': getattr(s, 'martial_art_style', getattr(s, 'style', 'Unknown')),
+                'notes': getattr(s, 'notes', '')
+            } for s in sessions]
+        }
+        
+        # Analyze injury risk
+        gemini_service = get_gemini_service()
+        risk_analysis = gemini_service.analyze_injury_risk(user_data)
+        
+        return jsonify(risk_analysis)
+        
+    except Exception as e:
+        logger.error(f"Error analyzing injury risk: {e}")
+        return jsonify({
+            'error': 'Failed to analyze injury risk',
+            'message': str(e),
+            'success': False
+        }), 500
+
+@ai_bp.route('/competition-prep', methods=['POST'])
+@jwt_required()
+def generate_competition_prep():
+    """Generate AI-powered competition preparation plan"""
+    try:
+        user_id = get_jwt_identity()
+        request_data = request.get_json() or {}
+        
+        competition_date = request_data.get('competition_date')
+        competition_type = request_data.get('competition_type', 'tournament')
+        current_skills = request_data.get('current_skills', [])
+        
+        if not competition_date:
+            return jsonify({
+                'error': 'Competition date is required',
+                'success': False
+            }), 400
+        
+        # Get user data
+        User = current_app.User
+        TrainingSession = current_app.TrainingSession
+        TechniqueProgress = current_app.TechniqueProgress
+        
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        # Get training history
+        sessions = TrainingSession.query.filter(
+            TrainingSession.user_id == user_id
+        ).order_by(TrainingSession.created_at.desc()).limit(15).all()
+        
+        techniques = TechniqueProgress.query.filter(
+            TechniqueProgress.user_id == user_id
+        ).all()
+        
+        # Calculate time until competition
+        from datetime import datetime
+        comp_date = datetime.fromisoformat(competition_date.replace('Z', '+00:00'))
+        days_until = (comp_date - datetime.utcnow()).days
+        
+        # Generate competition prep plan
+        gemini_service = get_gemini_service()
+        
+        prep_prompt = f"""
+        Create a detailed competition preparation plan for this martial artist:
+
+        COMPETITION DETAILS:
+        - Date: {competition_date}
+        - Days until competition: {days_until}
+        - Competition type: {competition_type}
+        - Current skills focus: {', '.join(current_skills) if current_skills else 'General'}
+
+        ATHLETE PROFILE:
+        - Name: {getattr(user, 'first_name', 'Athlete')}
+        - Experience: {getattr(user, 'experience_level', 'Intermediate')}
+        - Primary Art: {getattr(user, 'primary_martial_art', 'Mixed Martial Arts')}
+
+        RECENT TRAINING:
+        - Total sessions (last 30 days): {len(sessions)}
+        - Techniques being worked on: {len(techniques)}
+
+        CREATE A PHASE-BASED PREPARATION PLAN:
+
+        1. **IMMEDIATE FOCUS (Next 2 weeks)**
+        2. **MID-TERM PREPARATION (Following weeks)**
+        3. **COMPETITION WEEK STRATEGY**
+        4. **MENTAL PREPARATION PLAN**
+        5. **RECOVERY & INJURY PREVENTION**
+
+        For each phase, include:
+        - Specific training goals
+        - Recommended techniques to focus on
+        - Training intensity and frequency
+        - Mental preparation exercises
+        - Nutrition and recovery recommendations
+
+        Consider the time available and create a realistic, progressive plan.
+        """
+        
+        try:
+            response = gemini_service.model.generate_content(prep_prompt)
+            
+            return jsonify({
+                'success': True,
+                'preparation_plan': response.text,
+                'competition_date': competition_date,
+                'days_until_competition': days_until,
+                'competition_type': competition_type,
+                'generated_at': datetime.utcnow().isoformat()
+            })
+            
+        except Exception as ai_error:
+            return jsonify({
+                'error': 'Failed to generate competition prep plan',
+                'message': str(ai_error),
+                'success': False
+            }), 500
+        
+    except Exception as e:
+        logger.error(f"Error generating competition prep: {e}")
+        return jsonify({
+            'error': 'Failed to generate competition preparation plan',
+            'message': str(e),
+            'success': False
+        }), 500
+
+@ai_bp.route('/training-tips', methods=['GET'])
+@jwt_required()
+def get_daily_training_tips():
+    """Get daily training tips based on user's martial art and recent activity"""
+    try:
+        user_id = get_jwt_identity()
+        
+        # Get user data
+        User = current_app.User
+        TrainingSession = current_app.TrainingSession
+        
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        # Get recent session
+        latest_session = TrainingSession.query.filter(
+            TrainingSession.user_id == user_id
+        ).order_by(TrainingSession.created_at.desc()).first()
+        
+        gemini_service = get_gemini_service()
+        
+        tips_prompt = f"""
+        Provide 3 daily training tips for this martial artist:
+
+        MARTIAL ARTIST:
+        - Name: {getattr(user, 'first_name', 'Student')}
+        - Primary Art: {getattr(user, 'primary_martial_art', 'Mixed Martial Arts')}
+        - Experience: {getattr(user, 'experience_level', 'Intermediate')}
+
+        RECENT ACTIVITY:
+        - Last session: {latest_session.martial_art_style if latest_session and hasattr(latest_session, 'martial_art_style') else 'No recent sessions'}
+        - Last training date: {latest_session.created_at.strftime('%Y-%m-%d') if latest_session and latest_session.created_at else 'No recent training'}
+
+        Provide 3 practical, actionable tips:
+        1. A technique tip
+        2. A conditioning/fitness tip  
+        3. A mental/mindset tip
+
+        Make them specific to their martial art and encouraging. Keep each tip to 1-2 sentences.
+        """
+        
+        try:
+            response = gemini_service.model.generate_content(tips_prompt)
+            
+            return jsonify({
+                'success': True,
+                'tips': response.text,
+                'martial_art': getattr(user, 'primary_martial_art', 'Mixed Martial Arts'),
+                'generated_at': datetime.utcnow().isoformat()
+            })
+            
+        except Exception as ai_error:
+            return jsonify({
+                'error': 'Failed to generate training tips',
+                'message': str(ai_error),
+                'success': False
+            }), 500
+        
+    except Exception as e:
+        logger.error(f"Error getting training tips: {e}")
+        return jsonify({
+            'error': 'Failed to get training tips',
+            'message': str(e),
+            'success': False
+        }), 500
+
+@ai_bp.route('/debug-service', methods=['GET'])
+def debug_gemini_service():
+    """Debug endpoint to check GeminiService methods"""
+    try:
+        from services.gemini_service import get_gemini_service
+        gemini_service = get_gemini_service()
+        
+        # Get all methods and attributes
+        all_attributes = dir(gemini_service)
+        methods = [attr for attr in all_attributes if callable(getattr(gemini_service, attr)) and not attr.startswith('_')]
+        
+        return jsonify({
+            'service_enabled': gemini_service.is_enabled() if hasattr(gemini_service, 'is_enabled') else 'No is_enabled method',
+            'service_type': str(type(gemini_service)),
+            'has_generate_chat_response': hasattr(gemini_service, 'generate_chat_response'),
+            'available_methods': methods,
+            'all_attributes': [attr for attr in all_attributes if not attr.startswith('__')],
+            'service_file_location': gemini_service.__class__.__module__ if hasattr(gemini_service, '__class__') else 'Unknown'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'error': str(e),
+            'traceback': str(e)
+        }), 500

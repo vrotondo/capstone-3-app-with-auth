@@ -44,16 +44,6 @@ class GeminiService:
     def analyze_training_patterns(self, user_data: Dict[str, Any]) -> List[TrainingInsight]:
         """
         Analyze user's training data and generate insights
-        
-        Args:
-            user_data: Dictionary containing:
-                - sessions: List of training sessions
-                - techniques: List of technique progress
-                - user_profile: User preferences and goals
-                - timeframe: Analysis period (e.g., 'last_30_days')
-        
-        Returns:
-            List of TrainingInsight objects
         """
         if not self.enabled:
             return [TrainingInsight(
@@ -90,6 +80,76 @@ class GeminiService:
                 action_items=['Check your internet connection', 'Try again in a few minutes'],
                 data_points={'error': str(e)}
             )]
+    
+    def generate_chat_response(self, message: str, chat_history: List[Dict], user_context: Dict[str, Any]) -> str:
+        """Generate conversational response as a martial arts coach"""
+        if not self.enabled:
+            return "I'm sorry, but the AI coaching service is currently unavailable. Please check back later!"
+        
+        try:
+            # Build conversation context
+            conversation_context = self._build_chat_context(chat_history, user_context)
+            
+            # Create coaching prompt
+            coaching_prompt = f"""
+            You are an expert martial arts coach and mentor with 20+ years of experience training students in various martial arts disciplines. You are having a conversation with one of your students.
+
+            STUDENT PROFILE:
+            - Name: {user_context.get('name', 'Student')}
+            - Experience Level: {user_context.get('experience', 'Not specified')}
+            - Primary Martial Art: {user_context.get('primary_art', 'Various')}
+            - Recent Training Activity: {user_context.get('recent_sessions', 0)} sessions logged recently
+            - Techniques Being Worked On: {user_context.get('total_techniques', 0)} techniques tracked
+
+            CONVERSATION HISTORY:
+            {conversation_context}
+
+            CURRENT STUDENT MESSAGE: "{message}"
+
+            RESPOND AS A SUPPORTIVE MARTIAL ARTS COACH:
+            - Be encouraging and motivational
+            - Give specific, actionable advice
+            - Reference martial arts principles and philosophy when relevant
+            - Ask follow-up questions to better understand their needs
+            - Personalize your response using their profile information
+            - Keep responses conversational and engaging (2-4 sentences typically)
+            - If they ask about techniques, provide step-by-step guidance
+            - If they ask about training, reference their actual training data when possible
+            - Always prioritize safety and proper form
+
+            COACHING STYLE:
+            - Supportive but challenging
+            - Focus on continuous improvement
+            - Emphasize both physical and mental aspects
+            - Encourage consistent practice
+            - Share wisdom from martial arts traditions
+            
+            Respond naturally as if you're having a face-to-face conversation with your student.
+            """
+            
+            response = self.model.generate_content(coaching_prompt)
+            return response.text.strip()
+            
+        except Exception as e:
+            logger.error(f"Error generating chat response: {e}")
+            return "I'm having trouble processing your message right now. Could you try rephrasing your question? I'm here to help with your martial arts training!"
+
+    def _build_chat_context(self, chat_history: List[Dict], user_context: Dict[str, Any]) -> str:
+        """Build conversation context from chat history"""
+        if not chat_history:
+            return f"This is the start of your conversation with {user_context.get('name', 'your student')}."
+        
+        context = "Recent conversation:\n"
+        for chat in chat_history[-5:]:  # Last 5 exchanges
+            role = chat.get('role', 'user')
+            content = chat.get('content', '')
+            
+            if role == 'user':
+                context += f"Student: {content}\n"
+            elif role == 'assistant' or role == 'coach':
+                context += f"Coach: {content}\n"
+        
+        return context
     
     def generate_workout_suggestions(self, user_data: Dict[str, Any]) -> Dict[str, Any]:
         """Generate AI-powered workout suggestions based on training history"""
@@ -147,36 +207,6 @@ class GeminiService:
             logger.error(f"Error generating workout suggestions: {e}")
             return {'error': f'Unable to generate suggestions: {str(e)}'}
     
-    def analyze_technique_progress(self, technique_data: List[Dict]) -> List[TrainingInsight]:
-        """Analyze progress on specific techniques"""
-        if not self.enabled:
-            return []
-        
-        try:
-            techniques_summary = self._prepare_technique_summary(technique_data)
-            
-            prompt = f"""
-            Analyze this martial artist's technique progress and provide specific insights:
-            
-            Technique Data: {techniques_summary}
-            
-            Focus on:
-            1. Techniques showing good progress (level improvements)
-            2. Techniques that need more work (low levels or no progress)
-            3. Recommended focus areas for next training sessions
-            4. Potential skill gaps based on technique levels
-            5. Suggestions for advancement
-            
-            Provide practical, actionable insights that help improve their martial arts training.
-            """
-            
-            response = self.model.generate_content(prompt)
-            return self._parse_technique_response(response.text, technique_data)
-            
-        except Exception as e:
-            logger.error(f"Error analyzing technique progress: {e}")
-            return []
-    
     def _prepare_training_summary(self, user_data: Dict[str, Any]) -> str:
         """Prepare a concise summary of training data for AI analysis"""
         sessions = user_data.get('sessions', [])
@@ -188,9 +218,6 @@ class GeminiService:
         total_sessions = len(sessions)
         if not sessions:
             return f"No training sessions found in {timeframe}. User is just starting their martial arts journey."
-        
-        # Calculate frequency and patterns
-        recent_sessions = [s for s in sessions if self._is_recent(s.get('date', s.get('created_at')))]
         
         # Handle different field names that might be used
         total_duration = 0
@@ -228,71 +255,12 @@ class GeminiService:
         summary = f"""
         Training Profile ({timeframe}):
         - Total Sessions: {total_sessions}
-        - Recent Sessions (last 30 days): {len(recent_sessions)}
         - Average Duration: {avg_duration:.0f} minutes per session
         - Average Intensity: {avg_intensity:.1f}/10
         - Primary Martial Arts: {', '.join([style for style, count in top_styles])}
         - User Experience: {user_profile.get('experience_level', 'Not specified')}
         - Training Goals: {user_profile.get('goals', 'Not specified')}
-        
-        Recent Training Pattern:
         """
-        
-        # Add recent session details (last 5)
-        for session in recent_sessions[-5:]:
-            style = session.get('martial_art_style', session.get('style', 'Unknown'))
-            duration = session.get('duration_minutes', session.get('duration', 0))
-            intensity = session.get('intensity', session.get('intensity_level', 0))
-            summary += f"- {style}: {duration}min, intensity {intensity}/10\n"
-        
-        # Add technique progress if available
-        if techniques:
-            summary += f"\nTechnique Progress: {len(techniques)} techniques being tracked\n"
-            high_level = [t for t in techniques if t.get('current_level', 0) >= 7]
-            low_level = [t for t in techniques if t.get('current_level', 0) <= 3]
-            summary += f"- Advanced techniques (7+): {len(high_level)}\n"
-            summary += f"- Beginner techniques (≤3): {len(low_level)}\n"
-        
-        return summary
-    
-    def _prepare_technique_summary(self, technique_data: List[Dict]) -> str:
-        """Prepare technique progress summary"""
-        if not technique_data:
-            return "No technique progress data available."
-        
-        summary = f"Technique Progress Summary ({len(technique_data)} techniques):\n"
-        
-        # Group by skill level
-        beginner = []  # 1-3
-        intermediate = []  # 4-6
-        advanced = []  # 7-10
-        
-        for tech in technique_data:
-            level = tech.get('current_level', 0)
-            name = tech.get('technique_name', 'Unknown')
-            target = tech.get('target_level', 'N/A')
-            
-            if level <= 3:
-                beginner.append(f"{name} (Level {level}, Target: {target})")
-            elif level <= 6:
-                intermediate.append(f"{name} (Level {level}, Target: {target})")
-            else:
-                advanced.append(f"{name} (Level {level}, Target: {target})")
-        
-        if beginner:
-            summary += f"\nBeginner Level (1-3): {len(beginner)} techniques\n"
-            for tech in beginner[:3]:  # Show first 3
-                summary += f"  - {tech}\n"
-        
-        if intermediate:
-            summary += f"\nIntermediate Level (4-6): {len(intermediate)} techniques\n"
-            for tech in intermediate[:3]:
-                summary += f"  - {tech}\n"
-        
-        if advanced:
-            summary += f"\nAdvanced Level (7-10): {len(advanced)} techniques\n"
-            for tech in advanced[:3]:
-                summary += f"  - {tech}\n"
         
         return summary
     
@@ -310,7 +278,6 @@ class GeminiService:
         2. **Intensity Management**: Is their training intensity appropriate for their level?
         3. **Skill Development**: What areas need focus based on their training?
         4. **Balance Assessment**: Are they covering all important aspects of martial arts?
-        5. **Progress Opportunities**: What specific improvements can they make?
 
         Format your response with clear, actionable insights. Each insight should:
         - Have a clear title
@@ -319,7 +286,6 @@ class GeminiService:
         - Be encouraging and motivational
 
         Focus on practical advice they can implement in their next training sessions.
-        Keep insights concise but valuable - this is for a martial artist who wants to improve.
         """
     
     def _parse_ai_response(self, response_text: str, user_data: Dict[str, Any]) -> List[TrainingInsight]:
@@ -330,7 +296,6 @@ class GeminiService:
             # Split response into sections
             lines = response_text.split('\n')
             current_insight = None
-            collecting_content = False
             
             for line in lines:
                 line = line.strip()
@@ -338,9 +303,8 @@ class GeminiService:
                     continue
                 
                 # Look for numbered sections or **headers**
-                if (line.startswith(('1.', '2.', '3.', '4.', '5.')) or 
-                    (line.startswith('**') and line.endswith('**')) or
-                    line.startswith('###')):
+                if (line.startswith(('1.', '2.', '3.', '4.')) or 
+                    (line.startswith('**') and line.endswith('**'))):
                     
                     # Save previous insight
                     if current_insight and current_insight.message.strip():
@@ -349,37 +313,27 @@ class GeminiService:
                     # Extract title
                     title = line
                     title = title.replace('*', '').replace('#', '')
-                    title = title.replace('1.', '').replace('2.', '').replace('3.', '').replace('4.', '').replace('5.', '')
+                    title = title.replace('1.', '').replace('2.', '').replace('3.', '').replace('4.', '')
                     title = title.strip()
-                    
-                    # Determine insight type
-                    insight_type = 'recommendation'
-                    if 'consistency' in title.lower():
-                        insight_type = 'pattern'
-                    elif 'progress' in title.lower() or 'improvement' in title.lower():
-                        insight_type = 'achievement'
-                    elif 'warning' in title.lower() or 'concern' in title.lower():
-                        insight_type = 'warning'
                     
                     # Start new insight
                     current_insight = TrainingInsight(
-                        type=insight_type,
+                        type='recommendation',
                         title=title,
                         message='',
                         confidence=0.8,
                         action_items=[],
                         data_points={}
                     )
-                    collecting_content = True
                     
-                elif current_insight and collecting_content:
+                elif current_insight:
                     # Add to current insight message
                     current_insight.message += line + ' '
                     
                     # Extract action items
-                    if any(keyword in line.lower() for keyword in ['should', 'try', 'consider', 'recommend', 'focus on', 'work on']):
+                    if any(keyword in line.lower() for keyword in ['should', 'try', 'consider', 'recommend', 'focus on']):
                         action = line.replace('-', '').replace('•', '').strip()
-                        if action and len(action) > 10 and action not in current_insight.action_items:
+                        if action and len(action) > 15 and action not in current_insight.action_items:
                             current_insight.action_items.append(action)
             
             # Add the last insight
@@ -396,19 +350,6 @@ class GeminiService:
                     action_items=['Continue training consistently'],
                     data_points={}
                 ))
-            
-            # Add some data points based on user data
-            sessions = user_data.get('sessions', [])
-            if sessions:
-                total_sessions = len(sessions)
-                avg_duration = sum(s.get('duration_minutes', s.get('duration', 0)) for s in sessions) / total_sessions
-                
-                for insight in insights:
-                    insight.data_points.update({
-                        'total_sessions': total_sessions,
-                        'avg_duration': round(avg_duration, 1),
-                        'timeframe': user_data.get('timeframe', 'last_30_days')
-                    })
         
         except Exception as e:
             logger.error(f"Error parsing AI response: {e}")
@@ -422,39 +363,6 @@ class GeminiService:
             )]
         
         return insights[:4]  # Limit to 4 insights for UI
-    
-    def _parse_technique_response(self, response_text: str, technique_data: List[Dict]) -> List[TrainingInsight]:
-        """Parse technique-specific AI response"""
-        try:
-            # Create technique-focused insights
-            insights = []
-            
-            if technique_data:
-                total_techniques = len(technique_data)
-                avg_level = sum(t.get('current_level', 0) for t in technique_data) / total_techniques
-                
-                insight = TrainingInsight(
-                    type='technique',
-                    title='Technique Progress Analysis',
-                    message=response_text[:400] + '...' if len(response_text) > 400 else response_text,
-                    confidence=0.8,
-                    action_items=[
-                        'Focus on techniques below your target level',
-                        'Practice fundamental movements daily',
-                        'Track progress consistently'
-                    ],
-                    data_points={
-                        'total_techniques': total_techniques,
-                        'average_level': round(avg_level, 1)
-                    }
-                )
-                insights.append(insight)
-            
-            return insights
-            
-        except Exception as e:
-            logger.error(f"Error parsing technique response: {e}")
-            return []
     
     def _is_recent(self, date_str: str, days: int = 30) -> bool:
         """Check if a date string is within the last N days"""

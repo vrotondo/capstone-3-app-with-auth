@@ -17,6 +17,7 @@
 @import './styles/pages/exercises.css';
 @import './styles/components/loading.css';
 @import './styles/components/navigation.css';
+@import './styles/components/ai-chat.css';
 
 .technique-description,
 .enhanced-technique-name,
