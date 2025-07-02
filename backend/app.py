@@ -5,12 +5,8 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
-from datetime import timedelta
+from datetime import timedelta, datetime
 from dotenv import load_dotenv
-from routes.auth import auth_bp
-from routes.training import training_bp
-from routes.wger import wger_bp
-from routes.workout import workout_bp
 
 load_dotenv()
 
@@ -19,6 +15,7 @@ print("🥋 DojoTracker Starting...")
 print("📁 Current directory:", os.getcwd())
 print("🐍 Python version:", sys.version)
 print(f"🔍 Loaded WGER_API_KEY: {'YES' if os.getenv('WGER_API_KEY') else 'NO'}")
+print(f"🔍 Loaded GEMINI_API_KEY: {'YES' if os.getenv('GEMINI_API_KEY') else 'NO'}")
 
 # Initialize extensions
 db = SQLAlchemy()
@@ -248,6 +245,15 @@ def create_app():
         print("❌ Make sure you created backend/routes/exercises.py")
         exercises_bp = None
 
+    # Try to import AI insights blueprint
+    try:
+        from routes.ai_insights import ai_bp
+        print("✅ AI insights blueprint imported")
+    except Exception as e:
+        print(f"❌ Failed to import AI insights blueprint: {e}")
+        print("❌ AI insights will be available when you create backend/routes/ai_insights.py")
+        ai_bp = None
+
     # Register all blueprints with proper checks
     if auth_bp:
         print(f"🔍 Registering auth blueprint: {auth_bp}")
@@ -291,6 +297,13 @@ def create_app():
         print("✅ Exercises blueprint registered at /api/exercises")
     else:
         print("❌ Exercises blueprint not registered")
+
+    # Register AI blueprint if available
+    if ai_bp:
+        app.register_blueprint(ai_bp, url_prefix='/api/ai')
+        print("✅ AI insights blueprint registered at /api/ai")
+    else:
+        print("❌ AI insights blueprint not registered")
         
     print("✅ Blueprints registration complete")
 
@@ -301,12 +314,108 @@ def create_app():
             'message': 'DojoTracker API is running!',
             'version': '1.0.0',
             'status': 'healthy',
-            'features': ['Training Sessions', 'Technique Library', 'User Authentication', 'Exercise Database', 'wger Integration']
+            'features': ['Training Sessions', 'Technique Library', 'User Authentication', 'Exercise Database', 'wger Integration', 'AI Insights (Beta)']
         })
 
     @app.route('/api/health')
     def health():
         return jsonify({'status': 'healthy', 'message': 'API is working'})
+
+    # AI Status endpoint - always available even if AI blueprint isn't loaded
+    @app.route('/api/ai-status')
+    def ai_status():
+        """Simple AI service status check - no complex imports needed"""
+        
+        # Check if API key exists
+        api_key = os.getenv('GEMINI_API_KEY')
+        
+        status_info = {
+            'timestamp': datetime.utcnow().isoformat(),
+            'ai_enabled': False,
+            'status': 'checking',
+            'message': 'Checking AI service availability...'
+        }
+        
+        if not api_key:
+            status_info.update({
+                'ai_enabled': False,
+                'status': 'no_api_key',
+                'message': 'GEMINI_API_KEY not found in environment variables',
+                'instructions': [
+                    'Get API key from https://makersuite.google.com/app/apikey',
+                    'Add GEMINI_API_KEY=your_key_here to backend/.env file',
+                    'Restart the server'
+                ]
+            })
+            return jsonify(status_info)
+        
+        # Check if library is installed
+        try:
+            import google.generativeai as genai
+            status_info.update({
+                'ai_enabled': True,
+                'status': 'ready',
+                'message': 'Google Gemini AI is ready to use!',
+                'api_key_present': True,
+                'library_installed': True,
+                'blueprint_loaded': ai_bp is not None,
+                'next_steps': [
+                    'AI insights will appear on your dashboard',
+                    'Full AI features coming soon'
+                ]
+            })
+        except ImportError:
+            status_info.update({
+                'ai_enabled': False,
+                'status': 'library_missing',
+                'message': 'Google Generative AI library not installed',
+                'api_key_present': True,
+                'library_installed': False,
+                'fix_command': 'pip install google-generativeai==0.3.2'
+            })
+        except Exception as e:
+            status_info.update({
+                'ai_enabled': False,
+                'status': 'error',
+                'message': f'AI service error: {str(e)}',
+                'error': str(e)
+            })
+        
+        return jsonify(status_info)
+
+    # Add a simple test endpoint too
+    @app.route('/api/ai-test')
+    def ai_test():
+        """Test if we can actually use the AI service"""
+        
+        api_key = os.getenv('GEMINI_API_KEY')
+        if not api_key:
+            return jsonify({
+                'test_result': 'failed',
+                'reason': 'No API key'
+            }), 400
+        
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=api_key)
+            
+            # Try to create a model instance
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            
+            return jsonify({
+                'test_result': 'success',
+                'message': 'AI service is working correctly!',
+                'model': 'gemini-1.5-flash',
+                'ready_for_insights': True,
+                'blueprint_available': ai_bp is not None
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'test_result': 'failed',
+                'reason': str(e),
+                'message': 'AI service test failed'
+            }), 500
 
     # Add wger test route
     @app.route('/api/wger/test')
@@ -412,6 +521,8 @@ if __name__ == '__main__':
     print("🥋 Test techniques at: http://localhost:8000/api/techniques/test")
     print("💪 Test exercises at: http://localhost:8000/api/exercises/test")
     print("🌐 Test wger at: http://localhost:8000/api/wger/test")
+    print("🤖 Test AI status at: http://localhost:8000/api/ai-status")
+    print("🔬 Test AI service at: http://localhost:8000/api/ai-test")
     print("🔍 JWT debug at: http://localhost:8000/api/debug/jwt")
     print("🗺️ All routes at: http://localhost:8000/api/debug/routes")
     print("=" * 50)

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/common/Button';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import AIInsights from '../components/AIInsights'; // NEW: Import AI Insights component
 import trainingService from '../services/trainingService';
 import "../styles/pages/dashboard.css";
 
@@ -57,7 +58,7 @@ const Dashboard = () => {
         <div className="dashboard-page">
             <div className="dashboard-header">
                 <h1>Welcome back, {user?.first_name}!</h1>
-                <p>Here's your martial arts progress overview</p>
+                <p>Here's your martial arts progress overview with AI-powered insights</p>
             </div>
 
             {error && (
@@ -124,6 +125,9 @@ const Dashboard = () => {
                         </Link>
                     </div>
                 </div>
+
+                {/* NEW: AI Insights Card */}
+                <AIInsights />
 
                 {/* Techniques Progress */}
                 <div className="dashboard-card">
@@ -236,6 +240,14 @@ const Dashboard = () => {
                         <h3>Update Profile</h3>
                         <p>Manage your account settings</p>
                     </Link>
+
+                    {/* NEW: AI Insights Quick Action */}
+                    <div className="quick-action-card ai-action">
+                        <div className="action-icon">🤖</div>
+                        <h3>AI Analysis</h3>
+                        <p>Get personalized training insights</p>
+                        <small>Powered by Google Gemini</small>
+                    </div>
                 </div>
             </div>
         </div>

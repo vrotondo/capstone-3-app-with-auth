@@ -19,3 +19,6 @@ lxml==4.9.3
 
 # Validation
 email-validator==2.0.0
+
+# AI and Machine Learning
+google-generativeai==0.3.2
