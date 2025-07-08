@@ -1,3 +1,8 @@
+import os
+import uuid
+from werkzeug.utils import secure_filename
+from flask import send_file
+import magic
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime, date
@@ -15,6 +20,363 @@ def get_current_user_id():
     current_user_id = int(current_user_id_str)  # Convert to int for database queries
     return current_user_id
 
+# Video Upload and Management Routes
+
+# Configuration
+UPLOAD_FOLDER = 'uploads/videos'
+MAX_FILE_SIZE = 500 * 1024 * 1024  # 500MB
+ALLOWED_VIDEO_EXTENSIONS = {
+    'mp4', 'mov', 'avi', 'mkv', 'wmv', 'flv', 'webm', 'm4v'
+}
+ALLOWED_MIME_TYPES = {
+    'video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska',
+    'video/x-ms-wmv', 'video/x-flv', 'video/webm'
+}
+
+def ensure_upload_directory():
+    """Ensure upload directory exists"""
+    if not os.path.exists(UPLOAD_FOLDER):
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    return UPLOAD_FOLDER
+
+def allowed_file(filename, file_content):
+    """Check if file is allowed based on extension and MIME type"""
+    if not filename:
+        return False, "No filename provided"
+    
+    # Check file extension
+    if '.' not in filename:
+        return False, "File must have an extension"
+    
+    extension = filename.rsplit('.', 1)[1].lower()
+    if extension not in ALLOWED_VIDEO_EXTENSIONS:
+        return False, f"File type .{extension} not allowed. Allowed types: {', '.join(ALLOWED_VIDEO_EXTENSIONS)}"
+    
+    # Check MIME type
+    try:
+        mime_type = magic.from_buffer(file_content, mime=True)
+        if mime_type not in ALLOWED_MIME_TYPES:
+            return False, f"Invalid file type. Expected video file, got {mime_type}"
+    except Exception as e:
+        print(f"Warning: Could not determine MIME type: {e}")
+        # Continue without MIME type check if magic fails
+    
+    return True, None
+
+def generate_unique_filename(original_filename, user_id):
+    """Generate a unique filename for storage"""
+    extension = original_filename.rsplit('.', 1)[1].lower()
+    unique_id = str(uuid.uuid4())
+    return f"user_{user_id}_{unique_id}.{extension}"
+
+@training_bp.route('/videos', methods=['POST'])
+@jwt_required()
+def upload_video():
+    """Upload a training video"""
+    try:
+        current_user_id = get_current_user_id()
+        
+        # Check if file is present
+        if 'video' not in request.files:
+            return jsonify({'message': 'No video file provided'}), 400
+        
+        file = request.files['video']
+        if file.filename == '':
+            return jsonify({'message': 'No file selected'}), 400
+        
+        # Read file content for validation
+        file_content = file.read()
+        file.seek(0)  # Reset file pointer
+        
+        # Validate file size
+        if len(file_content) > MAX_FILE_SIZE:
+            return jsonify({
+                'message': f'File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB'
+            }), 400
+        
+        # Validate file type
+        is_valid, error_message = allowed_file(file.filename, file_content)
+        if not is_valid:
+            return jsonify({'message': error_message}), 400
+        
+        # Ensure upload directory exists
+        upload_dir = ensure_upload_directory()
+        
+        # Generate unique filename
+        original_filename = secure_filename(file.filename)
+        unique_filename = generate_unique_filename(original_filename, current_user_id)
+        file_path = os.path.join(upload_dir, unique_filename)
+        
+        # Save file
+        file.save(file_path)
+        
+        # Get additional metadata from request
+        title = request.form.get('title', '').strip()
+        description = request.form.get('description', '').strip()
+        technique_name = request.form.get('technique_name', '').strip()
+        style = request.form.get('style', '').strip()
+        is_private = request.form.get('is_private', 'true').lower() == 'true'
+        tags = request.form.get('tags', '').strip()
+        
+        # Parse tags
+        tag_list = [tag.strip() for tag in tags.split(',') if tag.strip()] if tags else []
+        
+        # Optional: Get video duration (simplified version without moviepy)
+        duration = None
+        try:
+            # Try to get basic file info
+            # Duration will be None for now - can be added later with AI analysis
+            print(f"Video uploaded successfully - duration extraction will be added in AI phase")
+        except Exception as e:
+            print(f"Note: Video duration not extracted: {e}")
+        
+        # Create video record
+        TrainingVideo = current_app.TrainingVideo
+        db = get_db()
+        
+        video = TrainingVideo(
+            user_id=current_user_id,
+            filename=unique_filename,
+            original_filename=original_filename,
+            file_path=file_path,
+            file_size=len(file_content),
+            duration=duration,
+            title=title if title else original_filename,
+            description=description,
+            technique_name=technique_name,
+            style=style,
+            is_private=is_private,
+            tags=tag_list
+        )
+        
+        video.save()
+        
+        print(f"✅ Video uploaded successfully: {original_filename} -> {unique_filename}")
+        
+        return jsonify({
+            'message': 'Video uploaded successfully',
+            'video': video.to_dict(),
+            'next_steps': 'Video is ready for AI analysis'
+        }), 201
+        
+    except Exception as e:
+        print(f"❌ Video upload error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        
+        # Clean up file if it was created
+        try:
+            if 'file_path' in locals() and os.path.exists(file_path):
+                os.remove(file_path)
+        except:
+            pass
+            
+        return jsonify({'message': f'Video upload failed: {str(e)}'}), 500
+
+@training_bp.route('/videos', methods=['GET'])
+@jwt_required()
+def get_videos():
+    """Get all videos for the current user"""
+    try:
+        current_user_id = get_current_user_id()
+        
+        # Get query parameters
+        limit = request.args.get('limit', type=int)
+        technique_name = request.args.get('technique_name')
+        style = request.args.get('style')
+        analysis_status = request.args.get('analysis_status')
+        
+        TrainingVideo = current_app.TrainingVideo
+        
+        # Build query
+        query = TrainingVideo.query.filter_by(user_id=current_user_id)
+        
+        if technique_name:
+            query = query.filter_by(technique_name=technique_name)
+        if style:
+            query = query.filter_by(style=style)
+        if analysis_status:
+            query = query.filter_by(analysis_status=analysis_status)
+            
+        query = query.order_by(TrainingVideo.created_at.desc())
+        
+        if limit:
+            query = query.limit(limit)
+            
+        videos = query.all()
+        
+        # Get video statistics
+        stats = TrainingVideo.get_user_video_stats(current_user_id)
+        
+        return jsonify({
+            'videos': [video.to_dict() for video in videos],
+            'count': len(videos),
+            'stats': stats,
+            'message': f'Found {len(videos)} videos'
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ Get videos error: {str(e)}")
+        return jsonify({'message': f'Failed to get videos: {str(e)}'}), 500
+
+@training_bp.route('/videos/<int:video_id>', methods=['GET'])
+@jwt_required()
+def get_video(video_id):
+    """Get a specific video"""
+    try:
+        current_user_id = get_current_user_id()
+        TrainingVideo = current_app.TrainingVideo
+        
+        video = TrainingVideo.query.filter_by(
+            id=video_id,
+            user_id=current_user_id
+        ).first()
+        
+        if not video:
+            return jsonify({'message': 'Video not found'}), 404
+        
+        return jsonify({
+            'video': video.to_dict(include_analysis=True),
+            'message': 'Video retrieved successfully'
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'message': f'Failed to get video: {str(e)}'}), 500
+
+@training_bp.route('/videos/<int:video_id>/file', methods=['GET'])
+@jwt_required()
+def get_video_file(video_id):
+    """Stream or download a video file"""
+    try:
+        current_user_id = get_current_user_id()
+        TrainingVideo = current_app.TrainingVideo
+        
+        video = TrainingVideo.query.filter_by(
+            id=video_id,
+            user_id=current_user_id
+        ).first()
+        
+        if not video:
+            return jsonify({'message': 'Video not found'}), 404
+        
+        if not os.path.exists(video.file_path):
+            return jsonify({'message': 'Video file not found on disk'}), 404
+        
+        # Determine if this should be a download or stream
+        download = request.args.get('download', 'false').lower() == 'true'
+        
+        return send_file(
+            video.file_path,
+            as_attachment=download,
+            download_name=video.original_filename if download else None,
+            mimetype='video/mp4'  # Default MIME type
+        )
+        
+    except Exception as e:
+        print(f"❌ Video file access error: {str(e)}")
+        return jsonify({'message': f'Failed to access video file: {str(e)}'}), 500
+
+@training_bp.route('/videos/<int:video_id>', methods=['PUT'])
+@jwt_required()
+def update_video(video_id):
+    """Update video metadata"""
+    try:
+        current_user_id = get_current_user_id()
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'message': 'No data provided'}), 400
+        
+        TrainingVideo = current_app.TrainingVideo
+        db = get_db()
+        
+        video = TrainingVideo.query.filter_by(
+            id=video_id,
+            user_id=current_user_id
+        ).first()
+        
+        if not video:
+            return jsonify({'message': 'Video not found'}), 404
+        
+        # Update allowed fields
+        if 'title' in data:
+            video.title = data['title'].strip()
+        if 'description' in data:
+            video.description = data['description'].strip()
+        if 'technique_name' in data:
+            video.technique_name = data['technique_name'].strip()
+        if 'style' in data:
+            video.style = data['style'].strip()
+        if 'is_private' in data:
+            video.is_private = bool(data['is_private'])
+        if 'tags' in data:
+            if isinstance(data['tags'], list):
+                video.tags = data['tags']
+            elif isinstance(data['tags'], str):
+                video.tags = [tag.strip() for tag in data['tags'].split(',') if tag.strip()]
+        
+        video.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Video updated successfully',
+            'video': video.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db = get_db()
+        db.session.rollback()
+        return jsonify({'message': f'Failed to update video: {str(e)}'}), 500
+
+@training_bp.route('/videos/<int:video_id>', methods=['DELETE'])
+@jwt_required()
+def delete_video(video_id):
+    """Delete a video and its file"""
+    try:
+        current_user_id = get_current_user_id()
+        TrainingVideo = current_app.TrainingVideo
+        db = get_db()
+        
+        video = TrainingVideo.query.filter_by(
+            id=video_id,
+            user_id=current_user_id
+        ).first()
+        
+        if not video:
+            return jsonify({'message': 'Video not found'}), 404
+        
+        original_filename = video.original_filename
+        
+        # Delete the video (this will also delete the file)
+        video.delete()
+        
+        return jsonify({
+            'message': f'Video "{original_filename}" deleted successfully'
+        }), 200
+        
+    except Exception as e:
+        db = get_db()
+        db.session.rollback()
+        return jsonify({'message': f'Failed to delete video: {str(e)}'}), 500
+
+@training_bp.route('/videos/stats', methods=['GET'])
+@jwt_required()
+def get_video_stats():
+    """Get video statistics for the current user"""
+    try:
+        current_user_id = get_current_user_id()
+        TrainingVideo = current_app.TrainingVideo
+        
+        stats = TrainingVideo.get_user_video_stats(current_user_id)
+        
+        return jsonify({
+            'stats': stats,
+            'message': 'Video statistics retrieved successfully'
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'message': f'Failed to get video statistics: {str(e)}'}), 500
+    
 # Training Sessions Routes
 @training_bp.route('/sessions', methods=['GET'])
 @jwt_required()

@@ -22,3 +22,8 @@ email-validator==2.0.0
 
 # AI and Machine Learning
 google-generativeai==0.3.2
+
+# Video upload dependencies
+python-magic==0.4.27
+python-magic-bin==0.4.14
+Pillow>=10.4.0 

@@ -441,5 +441,193 @@ def create_models(db):
         
         def __repr__(self):
             return f'<TechniqueProgress {self.technique_name} ({self.style}): {self.proficiency_level}/10>'
+        
+    class TrainingVideo(db.Model):
+        __tablename__ = 'training_videos'
+        __table_args__ = {'extend_existing': True}
+        
+        id = db.Column(db.Integer, primary_key=True)
+        user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+        
+        # Video file information
+        filename = db.Column(db.String(255), nullable=False)
+        original_filename = db.Column(db.String(255), nullable=False)
+        file_path = db.Column(db.String(500), nullable=False)
+        file_size = db.Column(db.Integer, nullable=False)  # Size in bytes
+        duration = db.Column(db.Float, nullable=True)  # Duration in seconds
+        
+        # Video metadata
+        title = db.Column(db.String(200), nullable=True)
+        description = db.Column(db.Text, nullable=True)
+        technique_name = db.Column(db.String(100), nullable=True)
+        style = db.Column(db.String(50), nullable=True)
+        
+        # Analysis and processing status
+        upload_status = db.Column(db.String(20), default='uploaded')  # uploaded, processing, analyzed, error
+        analysis_status = db.Column(db.String(20), default='pending')  # pending, processing, completed, failed
+        analysis_results = db.Column(db.JSON, nullable=True)  # Store AI analysis results
+        analysis_score = db.Column(db.Float, nullable=True)  # Overall technique score
+        
+        # Privacy and organization
+        is_private = db.Column(db.Boolean, default=True)
+        tags = db.Column(db.JSON, nullable=True)  # List of tags
+        
+        # Linked data
+        technique_progress_id = db.Column(db.Integer, db.ForeignKey('technique_progress.id'), nullable=True)
+        training_session_id = db.Column(db.Integer, db.ForeignKey('training_sessions.id'), nullable=True)
+        
+        # Timestamps
+        created_at = db.Column(db.DateTime, default=datetime.utcnow)
+        updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+        
+        # Relationships
+        user = db.relationship('User', backref='training_videos')
+        technique_progress = db.relationship('TechniqueProgress', backref='videos')
+        training_session = db.relationship('TrainingSession', backref='videos')
+        
+        def __init__(self, user_id, filename, original_filename, file_path, file_size, **kwargs):
+            self.user_id = user_id
+            self.filename = filename
+            self.original_filename = original_filename
+            self.file_path = file_path
+            self.file_size = file_size
+            self.duration = kwargs.get('duration')
+            self.title = kwargs.get('title')
+            self.description = kwargs.get('description')
+            self.technique_name = kwargs.get('technique_name')
+            self.style = kwargs.get('style')
+            self.is_private = kwargs.get('is_private', True)
+            self.tags = kwargs.get('tags', [])
+            self.technique_progress_id = kwargs.get('technique_progress_id')
+            self.training_session_id = kwargs.get('training_session_id')
+        
+        def to_dict(self, include_analysis=False):
+            """Convert training video to dictionary"""
+            data = {
+                'id': self.id,
+                'user_id': self.user_id,
+                'filename': self.filename,
+                'original_filename': self.original_filename,
+                'file_size': self.file_size,
+                'file_size_mb': round(self.file_size / (1024 * 1024), 2),
+                'duration': self.duration,
+                'duration_formatted': self.format_duration() if self.duration else None,
+                'title': self.title,
+                'description': self.description,
+                'technique_name': self.technique_name,
+                'style': self.style,
+                'upload_status': self.upload_status,
+                'analysis_status': self.analysis_status,
+                'analysis_score': self.analysis_score,
+                'is_private': self.is_private,
+                'tags': self.tags or [],
+                'technique_progress_id': self.technique_progress_id,
+                'training_session_id': self.training_session_id,
+                'created_at': self.created_at.isoformat() if self.created_at else None,
+                'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+                'file_url': f'/api/training/videos/{self.id}/file'  # URL to access video file
+            }
+            
+            if include_analysis and self.analysis_results:
+                data['analysis_results'] = self.analysis_results
+                
+            return data
+        
+        def format_duration(self):
+            """Format duration in seconds to MM:SS"""
+            if not self.duration:
+                return None
+            
+            minutes = int(self.duration // 60)
+            seconds = int(self.duration % 60)
+            return f"{minutes:02d}:{seconds:02d}"
+        
+        def update_analysis(self, analysis_results, score=None):
+            """Update video analysis results"""
+            self.analysis_results = analysis_results
+            self.analysis_score = score
+            self.analysis_status = 'completed'
+            self.updated_at = datetime.utcnow()
+        
+        def set_processing_status(self, status):
+            """Set processing status"""
+            valid_statuses = ['uploaded', 'processing', 'analyzed', 'error']
+            if status in valid_statuses:
+                self.upload_status = status
+                self.updated_at = datetime.utcnow()
+        
+        def set_analysis_status(self, status):
+            """Set analysis status"""
+            valid_statuses = ['pending', 'processing', 'completed', 'failed']
+            if status in valid_statuses:
+                self.analysis_status = status
+                self.updated_at = datetime.utcnow()
+        
+        def save(self):
+            """Save video to database"""
+            db.session.add(self)
+            db.session.commit()
+        
+        def delete(self):
+            """Delete video and its file"""
+            import os
+            # Delete physical file
+            try:
+                if os.path.exists(self.file_path):
+                    os.remove(self.file_path)
+            except Exception as e:
+                print(f"Warning: Could not delete video file {self.file_path}: {e}")
+            
+            # Delete database record
+            db.session.delete(self)
+            db.session.commit()
+        
+        @staticmethod
+        def get_user_videos(user_id, limit=None, technique_name=None, style=None):
+            """Get videos for a user with optional filters"""
+            query = TrainingVideo.query.filter_by(user_id=user_id)
+            
+            if technique_name:
+                query = query.filter_by(technique_name=technique_name)
+            if style:
+                query = query.filter_by(style=style)
+                
+            query = query.order_by(TrainingVideo.created_at.desc())
+            
+            if limit:
+                query = query.limit(limit)
+                
+            return query.all()
+        
+        @staticmethod
+        def get_user_video_stats(user_id):
+            """Get video statistics for a user"""
+            videos = TrainingVideo.query.filter_by(user_id=user_id).all()
+            
+            if not videos:
+                return {
+                    'total_videos': 0,
+                    'total_size_mb': 0,
+                    'total_duration': 0,
+                    'analyzed_videos': 0,
+                    'avg_score': 0
+                }
+            
+            total_size = sum(video.file_size for video in videos)
+            total_duration = sum(video.duration for video in videos if video.duration)
+            analyzed_videos = [v for v in videos if v.analysis_status == 'completed' and v.analysis_score]
+            avg_score = sum(v.analysis_score for v in analyzed_videos) / len(analyzed_videos) if analyzed_videos else 0
+            
+            return {
+                'total_videos': len(videos),
+                'total_size_mb': round(total_size / (1024 * 1024), 2),
+                'total_duration': total_duration,
+                'total_duration_formatted': f"{int(total_duration // 60)}:{int(total_duration % 60):02d}" if total_duration else "0:00",
+                'analyzed_videos': len(analyzed_videos),
+                'avg_score': round(avg_score, 1) if avg_score else 0
+            }
+        
+        def __repr__(self):
+            return f'<TrainingVideo {self.original_filename} by user {self.user_id}>'
 
-    return User, TrainingSession, TechniqueProgress, UserPreferences
+    return User, TrainingSession, TechniqueProgress, UserPreferences, TrainingVideo

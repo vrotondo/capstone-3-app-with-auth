@@ -119,18 +119,24 @@ def create_app():
         if len(models) == 3:
             User, TrainingSession, TechniqueProgress = models
             UserPreferences = None
+            TrainingVideo = None
         elif len(models) == 4:
             User, TrainingSession, TechniqueProgress, UserPreferences = models
+            TrainingVideo = None
+        elif len(models) == 5:
+            User, TrainingSession, TechniqueProgress, UserPreferences, TrainingVideo = models
         else:
             # Safe fallback - use positional indexing
             User = models[0]
             TrainingSession = models[1] 
             TechniqueProgress = models[2]
             UserPreferences = models[3] if len(models) > 3 else None
+            TrainingVideo = models[4] if len(models) > 4 else None
             
         print(f"✅ User models loaded: User, TrainingSession, TechniqueProgress" + 
-              (", UserPreferences" if UserPreferences else ""))
-              
+            (", UserPreferences" if UserPreferences else "") +
+            (", TrainingVideo" if TrainingVideo else ""))
+            
     except Exception as e:
         print(f"❌ Error loading user models: {e}")
         raise
@@ -183,6 +189,10 @@ def create_app():
     # Add UserPreferences if it exists
     if UserPreferences:
         app.UserPreferences = UserPreferences
+
+    # Add TrainingVideo if it exists
+    if TrainingVideo:
+        app.TrainingVideo = TrainingVideo
 
     # Register blueprints - SINGLE REGISTRATION ONLY
     print("🔗 Registering blueprints...")
