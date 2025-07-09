@@ -1,5 +1,3 @@
-// Replace your VideoPlayerPage.jsx with this functional version
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Button from '../components/common/Button';
@@ -14,7 +12,9 @@ const VideoPlayerPage = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
     const [videoError, setVideoError] = useState(false);
-    const [videoAspectRatio, setVideoAspectRatio] = useState('landscape');
+    const [videoAspectRatio, setVideoAspectRatio] = useState('auto');
+    const [videoDimensions, setVideoDimensions] = useState({ width: 0, height: 0 });
+    const [isVideoLoading, setIsVideoLoading] = useState(true);
 
     // Load video data
     useEffect(() => {
@@ -59,7 +59,7 @@ const VideoPlayerPage = () => {
         }
     };
 
-    // Get video URL for player
+    // Enhanced video URL with debugging
     const getVideoUrl = () => {
         if (!video) return '';
         const url = trainingService.getVideoFileUrl(video.id);
@@ -67,19 +67,58 @@ const VideoPlayerPage = () => {
         return url;
     };
 
-    // Handle video metadata loading to detect aspect ratio
+    // Smart aspect ratio detection
     const handleVideoLoadedMetadata = (e) => {
         const videoElement = e.target;
         const { videoWidth, videoHeight } = videoElement;
 
         console.log(`📐 Video dimensions: ${videoWidth}x${videoHeight}`);
 
-        // Determine if video is portrait or landscape
-        const aspectRatio = videoWidth / videoHeight;
-        const isPortrait = aspectRatio < 1; // Height > Width
+        setVideoDimensions({ width: videoWidth, height: videoHeight });
 
-        setVideoAspectRatio(isPortrait ? 'portrait' : 'landscape');
-        console.log(`🎭 Video aspect ratio detected: ${isPortrait ? 'Portrait (TikTok-style)' : 'Landscape (YouTube-style)'}`);
+        // Calculate aspect ratio
+        const aspectRatio = videoWidth / videoHeight;
+
+        let detectedRatio;
+        let ratioType;
+
+        if (Math.abs(aspectRatio - 1) < 0.1) {
+            // Square-ish (Instagram style)
+            detectedRatio = 'square';
+            ratioType = 'Square (1:1)';
+        } else if (aspectRatio < 0.8) {
+            // Portrait (TikTok style)
+            detectedRatio = 'portrait';
+            ratioType = 'Portrait (9:16)';
+        } else if (aspectRatio > 1.5) {
+            // Landscape (YouTube style)
+            detectedRatio = 'landscape';
+            ratioType = 'Landscape (16:9)';
+        } else {
+            // Other ratios
+            detectedRatio = 'auto';
+            ratioType = 'Custom';
+        }
+
+        setVideoAspectRatio(detectedRatio);
+        console.log(`🎭 Video aspect ratio detected: ${ratioType} (${aspectRatio.toFixed(2)})`);
+        setIsVideoLoading(false);
+    };
+
+    const handleVideoLoadStart = () => {
+        console.log('📼 Video loading started');
+        setIsVideoLoading(true);
+    };
+
+    const handleVideoCanPlay = () => {
+        console.log('✅ Video can play');
+        setIsVideoLoading(false);
+    };
+
+    const handleVideoError = (e) => {
+        console.error('❌ Video loading error:', e);
+        setVideoError(true);
+        setIsVideoLoading(false);
     };
 
     const formatDate = (dateString) => {
@@ -90,6 +129,46 @@ const VideoPlayerPage = () => {
             hour: '2-digit',
             minute: '2-digit'
         });
+    };
+
+    const getAspectRatioInfo = () => {
+        const { width, height } = videoDimensions;
+        const ratio = width && height ? (width / height).toFixed(2) : 'Unknown';
+
+        switch (videoAspectRatio) {
+            case 'portrait':
+                return {
+                    icon: '📱',
+                    label: 'Portrait',
+                    description: 'TikTok Style',
+                    ratio: ratio,
+                    class: 'portrait'
+                };
+            case 'landscape':
+                return {
+                    icon: '🖥️',
+                    label: 'Landscape',
+                    description: 'YouTube Style',
+                    ratio: ratio,
+                    class: 'landscape'
+                };
+            case 'square':
+                return {
+                    icon: '📷',
+                    label: 'Square',
+                    description: 'Instagram Style',
+                    ratio: ratio,
+                    class: 'square'
+                };
+            default:
+                return {
+                    icon: '🎬',
+                    label: 'Custom',
+                    description: 'Auto-fit',
+                    ratio: ratio,
+                    class: 'auto'
+                };
+        }
     };
 
     // Loading state
@@ -132,6 +211,8 @@ const VideoPlayerPage = () => {
         );
     }
 
+    const aspectInfo = getAspectRatioInfo();
+
     return (
         <div className="video-player-page">
             {/* Navigation Bar */}
@@ -143,32 +224,21 @@ const VideoPlayerPage = () => {
                 >
                     ← Back to Library
                 </Button>
-                <h1>Video Player</h1>
-            </div>
-
-            {/* Enhanced Debug info */}
-            <div style={{
-                background: '#f0f9ff',
-                padding: '1rem',
-                borderRadius: '8px',
-                marginBottom: '1rem',
-                fontSize: '0.9rem'
-            }}>
-                <strong>Debug Info:</strong> Video ID: {videoId} | Title: {video?.title} |
-                File Size: {video?.file_size_mb}MB | Aspect: {videoAspectRatio} | Status: {video?.analysis_status}
+                <h1>🎬 Video Player</h1>
             </div>
 
             {/* Main Content */}
             <div className="video-content">
                 {/* Enhanced Video Player Section */}
                 <div className="video-section">
-                    <div className={`video-player-container ${videoAspectRatio}`}>
+                    <div className={`video-player-container ${videoAspectRatio} ${isVideoLoading ? 'loading' : ''}`}>
                         {videoError ? (
                             <div className="video-error">
                                 <h3>⚠️ Video Loading Error</h3>
                                 <p>Unable to load video file. This might be a temporary issue.</p>
                                 <Button variant="primary" onClick={() => {
                                     setVideoError(false);
+                                    setIsVideoLoading(true);
                                     window.location.reload();
                                 }}>
                                     Try Again
@@ -179,19 +249,16 @@ const VideoPlayerPage = () => {
                                 controls
                                 preload="metadata"
                                 src={getVideoUrl()}
-                                onError={(e) => {
-                                    console.error('❌ Video loading error:', e);
-                                    setVideoError(true);
-                                }}
-                                onLoadStart={() => console.log('📼 Video loading started')}
-                                onCanPlay={() => console.log('✅ Video can play')}
+                                onError={handleVideoError}
+                                onLoadStart={handleVideoLoadStart}
+                                onCanPlay={handleVideoCanPlay}
                                 onLoadedData={() => console.log('✅ Video loaded successfully')}
                                 onLoadedMetadata={handleVideoLoadedMetadata}
                                 style={{
                                     width: '100%',
-                                    height: 'auto',
+                                    height: '100%',
                                     backgroundColor: '#000',
-                                    borderRadius: '12px'
+                                    borderRadius: '16px'
                                 }}
                             >
                                 Your browser does not support the video tag.
@@ -199,52 +266,39 @@ const VideoPlayerPage = () => {
                         )}
                     </div>
 
-                    {/* Video Info Pills */}
-                    <div style={{
-                        display: 'flex',
-                        gap: '1rem',
-                        marginTop: '1rem',
-                        justifyContent: 'center',
-                        flexWrap: 'wrap'
-                    }}>
-                        <span style={{
-                            background: videoAspectRatio === 'portrait' ? '#ff6b6b' : '#4ecdc4',
-                            color: 'white',
-                            padding: '0.25rem 0.75rem',
-                            borderRadius: '16px',
-                            fontSize: '0.8rem',
-                            fontWeight: '500'
-                        }}>
-                            {videoAspectRatio === 'portrait' ? '📱 Portrait (TikTok-style)' : '🖥️ Landscape (YouTube-style)'}
-                        </span>
+                    {/* Professional Video Info Pills */}
+                    <div className="video-info-pills">
+                        <div className={`video-pill aspect-ratio ${aspectInfo.class}`}>
+                            {aspectInfo.icon} {aspectInfo.label} • {aspectInfo.description}
+                            {videoDimensions.width && (
+                                <span style={{ opacity: 0.8, marginLeft: '0.5rem' }}>
+                                    ({videoDimensions.width}×{videoDimensions.height})
+                                </span>
+                            )}
+                        </div>
 
-                        {video?.file_size_mb && (
-                            <span style={{
-                                background: '#6c5ce7',
-                                color: 'white',
-                                padding: '0.25rem 0.75rem',
-                                borderRadius: '16px',
-                                fontSize: '0.8rem',
-                                fontWeight: '500'
-                            }}>
+                        {video.file_size_mb && (
+                            <div className="video-pill file-size">
                                 📁 {video.file_size_mb}MB
-                            </span>
+                            </div>
                         )}
 
-                        <span style={{
-                            background: '#a8e6cf',
-                            color: '#2d3436',
-                            padding: '0.25rem 0.75rem',
-                            borderRadius: '16px',
-                            fontSize: '0.8rem',
-                            fontWeight: '500'
-                        }}>
-                            🎬 Ready for AI Analysis
-                        </span>
+                        <div className="video-pill ai-ready">
+                            🤖 Ready for AI Analysis
+                        </div>
+
+                        {video.analysis_status === 'completed' && video.analysis_score && (
+                            <div className="video-pill" style={{
+                                background: 'linear-gradient(135deg, #00b894 0%, #00a085 100%)',
+                                color: 'white'
+                            }}>
+                                🎯 Score: {video.analysis_score}/10
+                            </div>
+                        )}
                     </div>
                 </div>
 
-                {/* Video Details Section */}
+                {/* Enhanced Video Details Section */}
                 <div className="video-details">
                     {/* Video Header */}
                     <div className="video-header">
@@ -292,7 +346,7 @@ const VideoPlayerPage = () => {
                             </div>
                         )}
 
-                        {/* Analysis Status */}
+                        {/* Enhanced Analysis Status */}
                         <div className="metadata-item">
                             <strong>Analysis Status:</strong>
                             <span
@@ -310,23 +364,27 @@ const VideoPlayerPage = () => {
                             </span>
                         </div>
 
-                        {/* Analysis Results (if available) */}
-                        {video.analysis_results && (
-                            <div className="metadata-item analysis-results">
-                                <strong>AI Analysis:</strong>
-                                <div className="analysis-content">
-                                    {video.analysis_score && (
-                                        <div className="analysis-score">
-                                            <span className="score-label">Overall Score:</span>
-                                            <span className="score-value">{video.analysis_score}/10</span>
-                                        </div>
-                                    )}
-                                    <div className="analysis-feedback">
-                                        <p>{video.analysis_results.feedback || 'Analysis complete - detailed feedback coming soon!'}</p>
-                                    </div>
+                        {/* Technical Info */}
+                        <div className="metadata-item">
+                            <strong>Video Details:</strong>
+                            <div style={{
+                                background: 'var(--background-secondary, #f8f9fa)',
+                                padding: '1rem',
+                                borderRadius: '8px',
+                                marginTop: '0.5rem',
+                                fontSize: '0.9rem'
+                            }}>
+                                <div style={{ marginBottom: '0.5rem' }}>
+                                    <strong>Resolution:</strong> {videoDimensions.width}×{videoDimensions.height}
+                                </div>
+                                <div style={{ marginBottom: '0.5rem' }}>
+                                    <strong>Aspect Ratio:</strong> {aspectInfo.ratio} ({aspectInfo.description})
+                                </div>
+                                <div>
+                                    <strong>File Size:</strong> {video.file_size_mb}MB
                                 </div>
                             </div>
-                        )}
+                        </div>
 
                         {/* Privacy Status */}
                         <div className="metadata-item">
@@ -354,17 +412,33 @@ const VideoPlayerPage = () => {
                         </Button>
                     </div>
 
-                    {/* Future AI Analysis Section */}
+                    {/* Enhanced AI Analysis Section */}
                     {video.analysis_status === 'pending' && (
                         <div className="ai-analysis-section">
-                            <h3>🤖 AI Analysis</h3>
-                            <p>Get detailed feedback on your technique with AI analysis!</p>
+                            <h3>🤖 AI Technique Analysis</h3>
+                            <p>Get detailed feedback on your martial arts technique with our advanced AI system!</p>
+                            <div style={{ marginBottom: '1rem', fontSize: '0.9rem', opacity: 0.9 }}>
+                                <strong>What AI Analysis Provides:</strong>
+                                <ul style={{ margin: '0.5rem 0', paddingLeft: '1.5rem', textAlign: 'left' }}>
+                                    <li>Technique form assessment</li>
+                                    <li>Movement quality scoring</li>
+                                    <li>Improvement suggestions</li>
+                                    <li>Progress tracking over time</li>
+                                </ul>
+                            </div>
                             <Button
                                 variant="primary"
                                 className="ai-analyze-btn"
                                 disabled
+                                style={{
+                                    background: 'rgba(255, 255, 255, 0.2)',
+                                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                                    color: 'white',
+                                    opacity: 0.7,
+                                    cursor: 'not-allowed'
+                                }}
                             >
-                                Analyze with AI (Coming Soon!)
+                                🚀 Analyze Technique (Coming Soon!)
                             </Button>
                         </div>
                     )}
