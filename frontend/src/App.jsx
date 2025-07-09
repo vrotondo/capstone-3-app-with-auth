@@ -16,6 +16,7 @@ import TechniqueDetail from './pages/TechniqueDetail';
 import MyTechniques from './pages/MyTechniques';
 import Profile from './pages/Profile';
 import Exercises from './pages/Exercises';
+import VideoPlayerPage from './pages/VideoPlayerPage';
 
 // Styles
 import './styles/global.css';
@@ -159,6 +160,17 @@ const AppContent = () => {
               <ProtectedRoute>
                 <Layout>
                   <Profile />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/video/:videoId"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <VideoPlayerPage />
                 </Layout>
               </ProtectedRoute>
             }

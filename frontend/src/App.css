@@ -18,6 +18,10 @@
 @import './styles/components/loading.css';
 @import './styles/components/navigation.css';
 @import './styles/components/ai-chat.css';
+@import './styles/components/video-upload.css';
+@import './styles/pages/training-header.css';
+@import './styles/components/video-player.css';
+@import './styles/pages/video-player.css';
 
 .technique-description,
 .enhanced-technique-name,

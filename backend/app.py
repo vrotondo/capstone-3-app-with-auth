@@ -53,7 +53,17 @@ def create_app():
     # Debug middleware to inspect JWT tokens
     @app.before_request
     def debug_jwt_token():
-        """Debug JWT token in requests"""
+        """Debug JWT token in requests - exclude video streaming"""
+        
+        # Skip debug for video streaming routes (they use token in URL)
+        if request.endpoint and 'stream' in str(request.endpoint):
+            return
+        
+        # Skip debug for static file requests
+        if request.path.startswith('/static/') or request.path.endswith(('.css', '.js', '.png', '.jpg')):
+            return
+        
+        # Only debug API routes that need JWT
         if request.endpoint and ('training' in str(request.endpoint) or 'techniques' in str(request.endpoint)):
             print(f"\n🔍 JWT Debug for {request.method} {request.path}")
             print(f"Endpoint: {request.endpoint}")
