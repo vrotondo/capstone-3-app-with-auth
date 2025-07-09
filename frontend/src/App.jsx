@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Layout from './components/layout/Layout';
 import LoadingSpinner from './components/common/LoadingSpinner';
+import ProfessionalVideoControls from './components/features/training/ProfessionalVideoControls';
 
 // Pages
 import Home from './pages/Home';
