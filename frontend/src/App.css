@@ -22,6 +22,7 @@
 @import './styles/pages/training-header.css';
 @import './styles/components/video-player.css';
 @import './styles/pages/video-player.css';
+@import './styles/components/aspect-ratio-toggle.css';
 
 .technique-description,
 .enhanced-technique-name,

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Button from '../components/common/Button';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import AspectRatioToggle from '../components/features/training/AspectRatioToggle';
 import trainingService from '../services/trainingService';
 
 const VideoPlayerPage = () => {
@@ -12,7 +13,10 @@ const VideoPlayerPage = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
     const [videoError, setVideoError] = useState(false);
-    const [videoAspectRatio, setVideoAspectRatio] = useState('auto');
+
+    // Enhanced aspect ratio state management
+    const [naturalAspectRatio, setNaturalAspectRatio] = useState('auto'); // Video's natural ratio
+    const [displayMode, setDisplayMode] = useState('auto'); // Current display mode
     const [videoDimensions, setVideoDimensions] = useState({ width: 0, height: 0 });
     const [isVideoLoading, setIsVideoLoading] = useState(true);
 
@@ -100,7 +104,7 @@ const VideoPlayerPage = () => {
             ratioType = 'Custom';
         }
 
-        setVideoAspectRatio(detectedRatio);
+        setNaturalAspectRatio(detectedRatio);
         console.log(`🎭 Video aspect ratio detected: ${ratioType} (${aspectRatio.toFixed(2)})`);
         setIsVideoLoading(false);
     };
@@ -121,6 +125,23 @@ const VideoPlayerPage = () => {
         setIsVideoLoading(false);
     };
 
+    // Toggle display mode
+    const handleDisplayModeChange = (newMode) => {
+        console.log(`🔄 Switching display mode from ${displayMode} to ${newMode}`);
+        setDisplayMode(newMode);
+    };
+
+    // Get current effective aspect ratio
+    const getEffectiveAspectRatio = () => {
+        if (displayMode === 'auto') {
+            return naturalAspectRatio;
+        }
+        return displayMode;
+    };
+
+    // Check if current display mode differs from natural ratio
+    const isForced = displayMode !== 'auto' && naturalAspectRatio !== displayMode;
+
     const formatDate = (dateString) => {
         return new Date(dateString).toLocaleDateString('en-US', {
             year: 'numeric',
@@ -134,41 +155,40 @@ const VideoPlayerPage = () => {
     const getAspectRatioInfo = () => {
         const { width, height } = videoDimensions;
         const ratio = width && height ? (width / height).toFixed(2) : 'Unknown';
+        const effectiveMode = getEffectiveAspectRatio();
 
-        switch (videoAspectRatio) {
-            case 'portrait':
-                return {
-                    icon: '📱',
-                    label: 'Portrait',
-                    description: 'TikTok Style',
-                    ratio: ratio,
-                    class: 'portrait'
-                };
-            case 'landscape':
-                return {
-                    icon: '🖥️',
-                    label: 'Landscape',
-                    description: 'YouTube Style',
-                    ratio: ratio,
-                    class: 'landscape'
-                };
-            case 'square':
-                return {
-                    icon: '📷',
-                    label: 'Square',
-                    description: 'Instagram Style',
-                    ratio: ratio,
-                    class: 'square'
-                };
-            default:
-                return {
-                    icon: '🎬',
-                    label: 'Custom',
-                    description: 'Auto-fit',
-                    ratio: ratio,
-                    class: 'auto'
-                };
-        }
+        const modeInfo = {
+            portrait: {
+                icon: '📱',
+                label: 'Portrait',
+                description: 'TikTok Style',
+                ratio: '0.56',
+                class: 'portrait'
+            },
+            landscape: {
+                icon: '🖥️',
+                label: 'Landscape',
+                description: 'YouTube Style',
+                ratio: '1.78',
+                class: 'landscape'
+            },
+            square: {
+                icon: '📷',
+                label: 'Square',
+                description: 'Instagram Style',
+                ratio: '1.00',
+                class: 'square'
+            },
+            auto: {
+                icon: '🎬',
+                label: 'Auto',
+                description: 'Original Ratio',
+                ratio: ratio,
+                class: naturalAspectRatio
+            }
+        };
+
+        return modeInfo[effectiveMode] || modeInfo.auto;
     };
 
     // Loading state
@@ -212,6 +232,7 @@ const VideoPlayerPage = () => {
     }
 
     const aspectInfo = getAspectRatioInfo();
+    const effectiveAspectRatio = getEffectiveAspectRatio();
 
     return (
         <div className="video-player-page">
@@ -231,7 +252,8 @@ const VideoPlayerPage = () => {
             <div className="video-content">
                 {/* Enhanced Video Player Section */}
                 <div className="video-section">
-                    <div className={`video-player-container ${videoAspectRatio} ${isVideoLoading ? 'loading' : ''}`}>
+                    {/* Video Player Container - FIRST */}
+                    <div className={`video-player-container ${effectiveAspectRatio} ${isVideoLoading ? 'loading' : ''}`}>
                         {videoError ? (
                             <div className="video-error">
                                 <h3>⚠️ Video Loading Error</h3>
@@ -245,28 +267,38 @@ const VideoPlayerPage = () => {
                                 </Button>
                             </div>
                         ) : (
-                            <video
-                                controls
-                                preload="metadata"
-                                src={getVideoUrl()}
-                                onError={handleVideoError}
-                                onLoadStart={handleVideoLoadStart}
-                                onCanPlay={handleVideoCanPlay}
-                                onLoadedData={() => console.log('✅ Video loaded successfully')}
-                                onLoadedMetadata={handleVideoLoadedMetadata}
-                                style={{
-                                    width: '100%',
-                                    height: '100%',
-                                    backgroundColor: '#000',
-                                    borderRadius: '16px'
-                                }}
-                            >
-                                Your browser does not support the video tag.
-                            </video>
+                            <>
+                                {/* Crop Indicator (when video is being cropped) */}
+                                {isForced && (
+                                    <div className="crop-indicator">
+                                        ✂️ Video cropped to fit {displayMode} format
+                                    </div>
+                                )}
+
+                                <video
+                                    controls
+                                    preload="metadata"
+                                    src={getVideoUrl()}
+                                    onError={handleVideoError}
+                                    onLoadStart={handleVideoLoadStart}
+                                    onCanPlay={handleVideoCanPlay}
+                                    onLoadedData={() => console.log('✅ Video loaded successfully')}
+                                    onLoadedMetadata={handleVideoLoadedMetadata}
+                                    className={`video-element ${effectiveAspectRatio}-video ${isForced ? 'video-forced-fit' : 'video-natural-fit'}`}
+                                    style={{
+                                        width: '100%',
+                                        height: '100%',
+                                        backgroundColor: '#000',
+                                        borderRadius: '16px'
+                                    }}
+                                >
+                                    Your browser does not support the video tag.
+                                </video>
+                            </>
                         )}
                     </div>
 
-                    {/* Professional Video Info Pills */}
+                    {/* Professional Video Info Pills - SECOND */}
                     <div className="video-info-pills">
                         <div className={`video-pill aspect-ratio ${aspectInfo.class}`}>
                             {aspectInfo.icon} {aspectInfo.label} • {aspectInfo.description}
@@ -296,6 +328,15 @@ const VideoPlayerPage = () => {
                             </div>
                         )}
                     </div>
+
+                    {/* Aspect Ratio Toggle Controls - THIRD (BELOW VIDEO) */}
+                    <AspectRatioToggle
+                        naturalAspectRatio={naturalAspectRatio}
+                        currentDisplayMode={displayMode}
+                        onDisplayModeChange={handleDisplayModeChange}
+                        videoDimensions={videoDimensions}
+                        isForced={isForced}
+                    />
                 </div>
 
                 {/* Enhanced Video Details Section */}
@@ -375,14 +416,22 @@ const VideoPlayerPage = () => {
                                 fontSize: '0.9rem'
                             }}>
                                 <div style={{ marginBottom: '0.5rem' }}>
-                                    <strong>Resolution:</strong> {videoDimensions.width}×{videoDimensions.height}
+                                    <strong>Original Resolution:</strong> {videoDimensions.width}×{videoDimensions.height}
                                 </div>
                                 <div style={{ marginBottom: '0.5rem' }}>
-                                    <strong>Aspect Ratio:</strong> {aspectInfo.ratio} ({aspectInfo.description})
+                                    <strong>Original Aspect Ratio:</strong> {aspectInfo.ratio}
+                                </div>
+                                <div style={{ marginBottom: '0.5rem' }}>
+                                    <strong>Display Mode:</strong> {aspectInfo.description}
                                 </div>
                                 <div>
                                     <strong>File Size:</strong> {video.file_size_mb}MB
                                 </div>
+                                {isForced && (
+                                    <div style={{ marginTop: '0.5rem', color: '#856404' }}>
+                                        ⚠️ Video aspect ratio has been forced. Content may be cropped or letterboxed.
+                                    </div>
+                                )}
                             </div>
                         </div>
 

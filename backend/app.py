@@ -46,6 +46,24 @@ def create_app():
     app.config['JWT_HEADER_NAME'] = 'Authorization'
     app.config['JWT_HEADER_TYPE'] = 'Bearer'
 
+    print("📦 Loading AI analysis models...")
+    try:
+        from models.ai_analysis import create_ai_analysis_models
+        VideoAnalysis, AnalysisFeedback, AnalysisProgress = create_ai_analysis_models(db)
+        print("✅ AI analysis models loaded: VideoAnalysis, AnalysisFeedback, AnalysisProgress")
+        
+        # Make models available globally in the app
+        app.VideoAnalysis = VideoAnalysis
+        app.AnalysisFeedback = AnalysisFeedback
+        app.AnalysisProgress = AnalysisProgress
+        
+    except Exception as e:
+        print(f"❌ Error loading AI analysis models: {e}")
+        # Don't raise - allow app to continue without AI features
+        VideoAnalysis = None
+        AnalysisFeedback = None
+        AnalysisProgress = None
+
     # Initialize extensions with app
     db.init_app(app)
     jwt.init_app(app)
@@ -87,6 +105,29 @@ def create_app():
             else:
                 print("❌ No Authorization header found")
             print("---")
+
+    print("🔍 Attempting to import AI video analysis blueprint...")
+    try:
+        from routes.ai_analysis import video_analysis_bp  # Note: different name!
+        print("✅ AI video analysis blueprint imported successfully")
+        print(f"🔍 AI blueprint type: {type(video_analysis_bp)}")
+        print(f"🔍 AI blueprint name: {video_analysis_bp.name}")
+    except ImportError as import_error:
+        print(f"❌ Import error: {import_error}")
+        video_analysis_bp = None
+    except Exception as e:
+        print(f"❌ Failed to import AI video analysis blueprint: {e}")
+        print(f"🔍 Error type: {type(e).__name__}")
+        import traceback
+        traceback.print_exc()
+        video_analysis_bp = None
+
+    if video_analysis_bp:
+        print(f"🔍 Registering AI video analysis blueprint: {video_analysis_bp}")
+        app.register_blueprint(video_analysis_bp, url_prefix='/api/video-analysis')  # Different prefix!
+        print("✅ AI video analysis blueprint registered at /api/video-analysis")
+    else:
+        print("❌ AI video analysis blueprint is None - cannot register")
 
     # JWT error handlers
     @jwt.expired_token_loader
@@ -264,23 +305,6 @@ def create_app():
         print(f"❌ Failed to import exercises blueprint: {e}")
         print("❌ Make sure you created backend/routes/exercises.py")
         exercises_bp = None
-
-    # Try to import AI insights blueprint
-    try:
-        from routes.ai_insights import ai_bp
-        print("✅ AI insights blueprint imported")
-    except Exception as e:
-        print(f"❌ Failed to import AI insights blueprint: {e}")
-        print("❌ AI insights will be available when you create backend/routes/ai_insights.py")
-        ai_bp = None
-
-    # Register all blueprints with proper checks
-    if auth_bp:
-        print(f"🔍 Registering auth blueprint: {auth_bp}")
-        app.register_blueprint(auth_bp, url_prefix='/api/auth')
-        print("✅ Auth blueprint registered at /api/auth")
-    else:
-        print("❌ Auth blueprint is None - cannot register")
     
     if training_bp:
         app.register_blueprint(training_bp, url_prefix='/api/training')
@@ -319,6 +343,7 @@ def create_app():
         print("❌ Exercises blueprint not registered")
 
     # Register AI blueprint if available
+    ai_bp = None
     if ai_bp:
         app.register_blueprint(ai_bp, url_prefix='/api/ai')
         print("✅ AI insights blueprint registered at /api/ai")
@@ -340,6 +365,50 @@ def create_app():
     @app.route('/api/health')
     def health():
         return jsonify({'status': 'healthy', 'message': 'API is working'})
+    
+    @app.route('/api/video-analysis-test')
+    def video_analysis_simple_test():
+        """Simple AI test that works in browser"""
+        try:
+            # Test 1: Check API key
+            api_key = os.getenv('GEMINI_API_KEY')
+            if not api_key:
+                return jsonify({
+                    'status': 'error',
+                    'message': 'No GEMINI_API_KEY found',
+                    'step': 'Add GEMINI_API_KEY=your_key_here to your .env file',
+                    'api_key_present': False
+                })
+            
+            # Test 2: Try importing AI service
+            try:
+                from services.ai_video_analysis import AIVideoAnalysisService
+                service = AIVideoAnalysisService()
+                service_ready = True
+                service_error = None
+            except Exception as service_error:
+                service_ready = False
+                service_error = str(service_error)
+            
+            return jsonify({
+                'status': 'success' if service_ready else 'partial',
+                'message': 'AI video analysis system status',
+                'api_key_present': True,
+                'api_key_length': len(api_key),
+                'service_ready': service_ready,
+                'service_error': service_error,
+                'max_frames': service.max_frames if service_ready else None,
+                'endpoints': [
+                    '/api/video-analysis/status',
+                    '/api/video-analysis/test'
+                ]
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'status': 'error',
+                'message': str(e)
+            })
 
     # AI Status endpoint - always available even if AI blueprint isn't loaded
     @app.route('/api/ai-status')
@@ -491,7 +560,9 @@ def create_app():
             })
         return jsonify({
             'total_routes': len(routes),
-            'routes': sorted(routes, key=lambda x: x['url'])
+            'routes': sorted(routes, key=lambda x: x['url']),
+            'ai_routes': [r for r in routes if '/api/video-analysis' in r['url']],
+            'all_ai_routes': [r for r in routes if '/api/ai' in r['url'] or '/api/video-analysis' in r['url']]
         })
 
     return app
